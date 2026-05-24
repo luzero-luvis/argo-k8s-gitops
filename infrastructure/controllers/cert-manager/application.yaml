@@ -1,0 +1,35 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cert-manager
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-options: "Prune=false"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: infrastructure
+  sources:
+    - repoURL: https://charts.jetstack.io
+      chart: cert-manager
+      targetRevision: 1.*
+      helm:
+        releaseName: cert-manager
+        valueFiles:
+          - $values/infrastructure/controllers/cert-manager/values.yaml
+    - repoURL: https://github.com/luzero-io/k8s-gitops.git
+      targetRevision: main
+      ref: values
+    - repoURL: https://github.com/luzero-io/k8s-gitops.git
+      targetRevision: main
+      path: infrastructure/controllers/cert-manager/resources
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cert-manager
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false
+      - ServerSideApply=true

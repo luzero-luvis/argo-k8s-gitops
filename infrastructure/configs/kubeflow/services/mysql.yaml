@@ -1,0 +1,82 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql
+  namespace: kubeflow
+  labels:
+    application-crd-id: kubeflow-pipelines
+spec:
+  ports:
+    - name: mysql
+      port: 3306
+      protocol: TCP
+      targetPort: 3306
+  selector:
+    app: mysql
+    application-crd-id: kubeflow-pipelines
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql
+  namespace: kubeflow
+  labels:
+    app: mysql
+    application-crd-id: kubeflow-pipelines
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql
+      application-crd-id: kubeflow-pipelines
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: mysql
+        application-crd-id: kubeflow-pipelines
+    spec:
+      serviceAccountName: mysql
+      securityContext:
+        fsGroup: 999
+        fsGroupChangePolicy: OnRootMismatch
+      containers:
+        - name: mysql
+          # MariaDB 10.5 uses mysql_native_password by default; required by
+          # ml_metadata_store_server (statically compiled, no sha2 support).
+          image: mariadb:10.5
+          imagePullPolicy: IfNotPresent
+          args:
+            - --datadir
+            - /var/lib/mysql
+            - --skip-log-bin
+          env:
+            - name: MYSQL_ALLOW_EMPTY_PASSWORD
+              value: "true"
+          ports:
+            - name: mysql
+              containerPort: 3306
+              protocol: TCP
+          resources:
+            requests:
+              cpu: 100m
+              memory: 800Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            runAsUser: 999
+            runAsGroup: 999
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+          volumeMounts:
+            - name: mysql-persistent-storage
+              mountPath: /var/lib/mysql
+      volumes:
+        - name: mysql-persistent-storage
+          persistentVolumeClaim:
+            claimName: mysql-pv-claim

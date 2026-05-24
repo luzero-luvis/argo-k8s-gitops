@@ -1,0 +1,13 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: wildcard-luzerofy
+  namespace: certificates
+spec:
+  secretName: wildcard-tls
+  issuerRef:
+    name: letsencrypt-production
+    kind: ClusterIssuer
+  dnsNames:
+    - "*.luzero.online"
+    - "luzero.online"

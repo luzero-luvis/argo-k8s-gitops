@@ -1,0 +1,30 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: small-go-webserver
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: apps
+  sources:
+    - repoURL: https://github.com/luzero-io/k8s-gitops.git
+      path: charts
+      targetRevision: main
+      helm:
+        releaseName: small-go-webserver
+        valueFiles:
+          - $values/apps/small-go-webserver/values.yaml
+    - repoURL: https://github.com/luzero-io/k8s-gitops.git
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: small-go-webserver
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false
+      - ServerSideApply=true

@@ -1,0 +1,167 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: EnvoyFilter
+metadata:
+  name: gateway-websocket-upgrade
+  namespace: istio-system
+spec:
+  workloadSelector:
+    labels:
+      gateway.networking.k8s.io/gateway-name: luzero-gateway
+  configPatches:
+    # Add WebSocket upgrade support to ALL routes in the kubeflow vhost (HTTPS).
+    # Without this, HTTPRoute-generated routes have upgrade_configs:[] which causes
+    # Envoy to strip Connection:Upgrade before it reaches Tornado, returning 400.
+    - applyTo: HTTP_ROUTE
+      match:
+        context: GATEWAY
+        routeConfiguration:
+          vhost:
+            name: "kubeflow.luzero.online:443"
+      patch:
+        operation: MERGE
+        value:
+          route:
+            timeout: 0s
+            upgrade_configs:
+              - upgrade_type: websocket
+    - applyTo: HTTP_ROUTE
+      match:
+        context: GATEWAY
+        routeConfiguration:
+          vhost:
+            name: "kubeflow.luzero.online:80"
+      patch:
+        operation: MERGE
+        value:
+          route:
+            timeout: 0s
+            upgrade_configs:
+              - upgrade_type: websocket
+---
+# Envoy protobuf spec: upgrade_configs not set on a route = disabled (not inherited from HCM).
+# Sidecar inbound routes on port 8888 (Jupyter notebooks) have no upgrade_configs set, so
+# Envoy treats Upgrade as a hop-by-hop header and strips it when Connection:Upgrade arrives
+# from the gateway. This patch explicitly enables WebSocket on all inbound routes for port 8888.
+apiVersion: networking.istio.io/v1alpha3
+kind: EnvoyFilter
+metadata:
+  name: notebook-sidecar-inbound-ws
+  namespace: istio-system
+spec:
+  configPatches:
+    - applyTo: HTTP_ROUTE
+      match:
+        context: SIDECAR_INBOUND
+        routeConfiguration:
+          name: "inbound|8888||"
+      patch:
+        operation: MERGE
+        value:
+          route:
+            timeout: 0s
+            upgrade_configs:
+              - upgrade_type: websocket
+---
+# Envoy strips Connection:Upgrade and Upgrade:websocket as hop-by-hop headers in the HTTP
+# filter chain before they reach the router (even with upgrade_configs set on the route).
+# The router needs to SEE the Upgrade header to enable WebSocket tunneling mode. This Lua
+# filter runs just before the router and re-injects the headers for any request that carries
+# Sec-WebSocket-Key (the canonical WebSocket handshake header, which is NOT hop-by-hop).
+apiVersion: networking.istio.io/v1alpha3
+kind: EnvoyFilter
+metadata:
+  name: gateway-websocket-header-fix
+  namespace: istio-system
+spec:
+  workloadSelector:
+    labels:
+      gateway.networking.k8s.io/gateway-name: luzero-gateway
+  configPatches:
+    - applyTo: HTTP_FILTER
+      match:
+        context: GATEWAY
+        listener:
+          portNumber: 80
+          filterChain:
+            filter:
+              name: envoy.filters.network.http_connection_manager
+              subFilter:
+                name: envoy.filters.http.router
+      patch:
+        operation: INSERT_BEFORE
+        value:
+          name: envoy.filters.http.lua.ws_header_fix
+          typed_config:
+            "@type": "type.googleapis.com/envoy.extensions.filters.http.lua.v3.Lua"
+            inline_code: |
+              function envoy_on_request(request_handle)
+                local sec_key = request_handle:headers():get("sec-websocket-key")
+                if sec_key then
+                  request_handle:headers():remove("upgrade")
+                  request_handle:headers():add("upgrade", "websocket")
+                  request_handle:headers():remove("connection")
+                  request_handle:headers():add("connection", "upgrade")
+                end
+              end
+    - applyTo: HTTP_FILTER
+      match:
+        context: GATEWAY
+        listener:
+          portNumber: 443
+          filterChain:
+            filter:
+              name: envoy.filters.network.http_connection_manager
+              subFilter:
+                name: envoy.filters.http.router
+      patch:
+        operation: INSERT_BEFORE
+        value:
+          name: envoy.filters.http.lua.ws_header_fix
+          typed_config:
+            "@type": "type.googleapis.com/envoy.extensions.filters.http.lua.v3.Lua"
+            inline_code: |
+              function envoy_on_request(request_handle)
+                local sec_key = request_handle:headers():get("sec-websocket-key")
+                if sec_key then
+                  request_handle:headers():remove("upgrade")
+                  request_handle:headers():add("upgrade", "websocket")
+                  request_handle:headers():remove("connection")
+                  request_handle:headers():add("connection", "upgrade")
+                end
+              end
+---
+# Same header re-injection fix for the sidecar inbound path. The gateway sends
+# Connection:upgrade + Upgrade:websocket to the sidecar, but the sidecar's HCM
+# also strips them as hop-by-hop before the router can detect the WebSocket upgrade.
+apiVersion: networking.istio.io/v1alpha3
+kind: EnvoyFilter
+metadata:
+  name: sidecar-websocket-header-fix
+  namespace: istio-system
+spec:
+  configPatches:
+    - applyTo: HTTP_FILTER
+      match:
+        context: SIDECAR_INBOUND
+        listener:
+          filterChain:
+            filter:
+              name: envoy.filters.network.http_connection_manager
+              subFilter:
+                name: envoy.filters.http.router
+      patch:
+        operation: INSERT_BEFORE
+        value:
+          name: envoy.filters.http.lua.ws_header_fix
+          typed_config:
+            "@type": "type.googleapis.com/envoy.extensions.filters.http.lua.v3.Lua"
+            inline_code: |
+              function envoy_on_request(request_handle)
+                local sec_key = request_handle:headers():get("sec-websocket-key")
+                if sec_key then
+                  request_handle:headers():remove("upgrade")
+                  request_handle:headers():add("upgrade", "websocket")
+                  request_handle:headers():remove("connection")
+                  request_handle:headers():add("connection", "upgrade")
+                end
+              end

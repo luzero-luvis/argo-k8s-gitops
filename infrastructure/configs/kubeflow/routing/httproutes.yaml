@@ -1,0 +1,223 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: kubeflow-http
+  namespace: kubeflow
+spec:
+  parentRefs:
+    - name: luzero-gateway
+      namespace: istio-system
+      sectionName: http
+  hostnames:
+    - "kubeflow.luzero.online"
+  rules:
+    # Sub-apps that strip prefix before forwarding
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /jupyter/
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              type: ReplacePrefixMatch
+              replacePrefixMatch: /
+        - type: RequestHeaderModifier
+          requestHeaderModifier:
+            add:
+              - name: x-forwarded-prefix
+                value: /jupyter
+      backendRefs:
+        - name: jupyter-web-app-service
+          port: 80
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /kserve-endpoints/
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              type: ReplacePrefixMatch
+              replacePrefixMatch: /
+      backendRefs:
+        - name: kserve-models-web-app
+          port: 80
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /tensorboards/
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              type: ReplacePrefixMatch
+              replacePrefixMatch: /
+        - type: RequestHeaderModifier
+          requestHeaderModifier:
+            add:
+              - name: x-forwarded-prefix
+                value: /tensorboards
+      backendRefs:
+        - name: tensorboards-web-app-service
+          port: 80
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /volumes/
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              type: ReplacePrefixMatch
+              replacePrefixMatch: /
+        - type: RequestHeaderModifier
+          requestHeaderModifier:
+            add:
+              - name: x-forwarded-prefix
+                value: /volumes
+      backendRefs:
+        - name: volumes-web-app-service
+          port: 80
+    # Sub-apps that keep their path prefix
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /katib/
+      backendRefs:
+        - name: katib-ui
+          port: 80
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /pipeline
+      backendRefs:
+        - name: ml-pipeline-ui
+          port: 80
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /kfam/
+      backendRefs:
+        - name: profiles-kfam
+          port: 8081
+    # Catch-all: Central Dashboard
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: centraldashboard
+          port: 80
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: kubeflow-https
+  namespace: kubeflow
+spec:
+  parentRefs:
+    - name: luzero-gateway
+      namespace: istio-system
+      sectionName: https
+  hostnames:
+    - "kubeflow.luzero.online"
+  rules:
+    # Sub-apps that strip prefix before forwarding
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /jupyter/
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              type: ReplacePrefixMatch
+              replacePrefixMatch: /
+        - type: RequestHeaderModifier
+          requestHeaderModifier:
+            add:
+              - name: x-forwarded-prefix
+                value: /jupyter
+      backendRefs:
+        - name: jupyter-web-app-service
+          port: 80
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /kserve-endpoints/
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              type: ReplacePrefixMatch
+              replacePrefixMatch: /
+      backendRefs:
+        - name: kserve-models-web-app
+          port: 80
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /tensorboards/
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              type: ReplacePrefixMatch
+              replacePrefixMatch: /
+        - type: RequestHeaderModifier
+          requestHeaderModifier:
+            add:
+              - name: x-forwarded-prefix
+                value: /tensorboards
+      backendRefs:
+        - name: tensorboards-web-app-service
+          port: 80
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /volumes/
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              type: ReplacePrefixMatch
+              replacePrefixMatch: /
+        - type: RequestHeaderModifier
+          requestHeaderModifier:
+            add:
+              - name: x-forwarded-prefix
+                value: /volumes
+      backendRefs:
+        - name: volumes-web-app-service
+          port: 80
+    # Sub-apps that keep their path prefix
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /katib/
+      backendRefs:
+        - name: katib-ui
+          port: 80
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /pipeline
+      backendRefs:
+        - name: ml-pipeline-ui
+          port: 80
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /kfam/
+      backendRefs:
+        - name: profiles-kfam
+          port: 8081
+    # Catch-all: Central Dashboard
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: centraldashboard
+          port: 80

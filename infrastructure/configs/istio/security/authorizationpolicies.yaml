@@ -1,0 +1,75 @@
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: global-deny-all
+  namespace: istio-system
+spec: {}
+---
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: istio-ingressgateway
+  namespace: istio-system
+spec:
+  action: ALLOW
+  selector:
+    matchLabels:
+      istio: ingressgateway
+  rules:
+    - {}
+---
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: istio-ingressgateway-oauth2-proxy
+  namespace: istio-system
+spec:
+  action: CUSTOM
+  provider:
+    name: oauth2-proxy
+  selector:
+    matchLabels:
+      istio: ingressgateway
+  rules:
+    - to:
+        - operation:
+            notPaths:
+              - /dex/*
+              - /dex/**
+              - /oauth2/*
+            notHosts:
+              - argocd.luzero.online
+              - grafana.luzero.online
+              - argo.luzero.online
+              - ferro-metrics-api.luzero.online
+              - n8n-csr-interns.slicearrow.com
+      when:
+        - key: request.headers[authorization]
+          notValues:
+            - '*'
+---
+# RequestAuthentication: unpack Dex JWTs at the luzero-gateway and inject
+# kubeflow-userid/kubeflow-groups headers so Central Dashboard and sub-apps
+# can identify the logged-in user. Mirrors the kubeflow/manifests
+# dex-jwt RequestAuthentication but targets luzero-gateway instead of
+# the legacy istio-ingressgateway pod (app: istio-ingressgateway).
+apiVersion: security.istio.io/v1beta1
+kind: RequestAuthentication
+metadata:
+  name: dex-jwt-luzero-gateway
+  namespace: istio-system
+spec:
+  selector:
+    matchLabels:
+      gateway.networking.k8s.io/gateway-name: luzero-gateway
+  jwtRules:
+  - issuer: http://dex.auth.svc.cluster.local:5556/dex
+    forwardOriginalToken: true
+    outputClaimToHeaders:
+    - header: kubeflow-userid
+      claim: email
+    - header: kubeflow-groups
+      claim: groups
+    fromHeaders:
+    - name: Authorization
+      prefix: "Bearer "

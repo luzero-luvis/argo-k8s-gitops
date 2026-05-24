@@ -1,0 +1,35 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: metallb
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-options: "Prune=false"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: infrastructure
+  sources:
+    - repoURL: https://metallb.github.io/metallb
+      chart: metallb
+      targetRevision: 0.15.*
+      helm:
+        releaseName: metallb
+        valueFiles:
+          - $values/infrastructure/controllers/metallb/values.yaml
+    - repoURL: https://github.com/luzero-io/k8s-gitops.git
+      targetRevision: main
+      ref: values
+    - repoURL: https://github.com/luzero-io/k8s-gitops.git
+      targetRevision: main
+      path: infrastructure/controllers/metallb/resources
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: metallb-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false
+      - ServerSideApply=true

@@ -1,0 +1,15 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - argo-rollouts/application.yaml
+  - argocd/application.yaml
+  - cert-manager/application.yaml
+  - external-dns/application.yaml
+  - external-dns-route53/application.yaml
+  - gateway-api/application.yaml
+  - istio-base/application.yaml
+  - istiod/application.yaml
+  - longhorn/application.yaml
+  - metallb/application.yaml
+  - metrics-server/application.yaml
+  - n8n/application.yaml

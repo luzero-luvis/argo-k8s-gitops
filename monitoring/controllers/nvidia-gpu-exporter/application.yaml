@@ -1,0 +1,30 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: nvidia-gpu-exporter
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: monitoring
+  sources:
+    - repoURL: https://utkuozdemir.org/helm-charts
+      chart: nvidia-gpu-exporter
+      targetRevision: 1.*
+      helm:
+        releaseName: nvidia-gpu-exporter
+        valueFiles:
+          - $values/monitoring/controllers/nvidia-gpu-exporter/values.yaml
+    - repoURL: https://github.com/luzero-io/k8s-gitops.git
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false
+      - ServerSideApply=true

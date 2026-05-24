@@ -1,0 +1,112 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: bootstrap
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  description: Bootstrap Applications that install the rest of the repo
+  sourceRepos:
+    - https://github.com/luzero-io/k8s-gitops.git
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: argocd
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: infrastructure
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  description: Cluster infrastructure controllers and config
+  sourceRepos:
+    - https://github.com/luzero-io/k8s-gitops.git
+    - https://argoproj.github.io/argo-helm
+    - https://charts.jetstack.io
+    - https://kubernetes-sigs.github.io/external-dns/
+    - https://kubernetes-sigs.github.io/metrics-server/
+    - https://github.com/kubernetes-sigs/gateway-api
+    - https://github.com/kubernetes-csi/external-snapshotter.git
+    - https://charts.longhorn.io
+    - https://metallb.github.io/metallb
+    - https://istio-release.storage.googleapis.com/charts
+    - https://community-charts.github.io/helm-charts
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: argocd
+    - server: https://kubernetes.default.svc
+      namespace: argo-rollouts
+    - server: https://kubernetes.default.svc
+      namespace: cert-manager
+    - server: https://kubernetes.default.svc
+      namespace: default
+    - server: https://kubernetes.default.svc
+      namespace: external-dns
+    - server: https://kubernetes.default.svc
+      namespace: auth
+    - server: https://kubernetes.default.svc
+      namespace: certificates
+    - server: https://kubernetes.default.svc
+      namespace: istio-system
+    - server: https://kubernetes.default.svc
+      namespace: kube-system
+    - server: https://kubernetes.default.svc
+      namespace: dhanvithshetty-luzero
+    - server: https://kubernetes.default.svc
+      namespace: kubeflow
+    - server: https://kubernetes.default.svc
+      namespace: notebook-gateway-sync
+    - server: https://kubernetes.default.svc
+      namespace: oauth2-proxy
+    - server: https://kubernetes.default.svc
+      namespace: longhorn-system
+    - server: https://kubernetes.default.svc
+      namespace: metallb-system
+    - server: https://kubernetes.default.svc
+      namespace: n8n
+  clusterResourceWhitelist:
+    - group: "*"
+      kind: "*"
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: apps
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  description: Workload applications
+  sourceRepos:
+    - https://github.com/luzero-io/k8s-gitops.git
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: "*"
+  clusterResourceWhitelist:
+    - group: "*"
+      kind: "*"
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: monitoring
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  description: Monitoring controllers and dashboards
+  sourceRepos:
+    - https://github.com/luzero-io/k8s-gitops.git
+    - https://prometheus-community.github.io/helm-charts
+    - https://utkuozdemir.org/helm-charts
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: monitoring
+    - server: https://kubernetes.default.svc
+      namespace: kube-system
+  clusterResourceWhitelist:
+    - group: "*"
+      kind: "*"

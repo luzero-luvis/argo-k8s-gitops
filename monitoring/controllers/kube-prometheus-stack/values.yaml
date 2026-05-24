@@ -1,0 +1,127 @@
+kubeControllerManager:
+  enabled: false
+
+kubeScheduler:
+  enabled: false
+
+kubeEtcd:
+  enabled: false
+
+kubeProxy:
+  enabled: false
+
+defaultRules:
+  rules:
+    kubeProxy: false
+
+prometheus:
+  resources:
+    requests:
+      cpu: "500m"
+      memory: 1Gi
+    limits:
+      cpu: "1"
+      memory: 2Gi
+
+  prometheusSpec:
+    scrapeInterval: 15s
+    evaluationInterval: 15s
+    externalLabels:
+      cluster: luzero-k8s
+
+    podMonitorSelectorNilUsesHelmValues: false
+    probeSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+    serviceMonitorSelectorNilUsesHelmValues: false
+
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: longhorn
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 50Gi
+    retention: 7d
+    retentionSize: 45GiB
+
+alertmanager:
+  enabled: true
+  alertmanagerSpec:
+    storage:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: longhorn
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 3Gi
+    retention: 120h
+
+grafana:
+  deploymentStrategy:
+    type: Recreate
+
+  assertNoLeakedSecrets: false
+
+  admin:
+    existingSecret: grafana-admin
+    userKey: admin-user
+    passwordKey: admin-password
+
+  serviceMonitor:
+    enabled: true
+    interval: 30s
+    scrapeTimeout: 25s
+
+  sidecar:
+    datasources:
+      enabled: true
+      label: grafana_datasource
+      labelValue: "1"
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      labelValue: "1"
+      searchNamespace: ALL
+      folderAnnotation: grafana_dashboard_folder
+      provider:
+        allowUiUpdates: true
+
+  grafana.ini:
+    date_formats:
+      default_week_start: monday
+    users:
+      allow_sign_up: false
+      auto_assign_org: true
+    server:
+      domain: grafana.luzero.online
+      root_url: https://grafana.luzero.online
+
+  persistence:
+    enabled: true
+    type: pvc
+    storageClassName: longhorn
+    accessModes:
+      - ReadWriteOnce
+    size: 10Gi
+
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+
+  plugins:
+    - grafana-polystat-panel
+
+prometheus-node-exporter:
+  tolerations:
+    - key: node-role.kubernetes.io/control-plane
+      operator: Exists
+      effect: NoSchedule
+    - key: gpu
+      operator: Exists
+      effect: NoSchedule

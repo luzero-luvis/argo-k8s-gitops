@@ -1,0 +1,7 @@
+server:
+  insecure: true
+
+repoServer:
+  livenessProbe:
+    failureThreshold: 5
+    timeoutSeconds: 5

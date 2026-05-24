@@ -1,0 +1,46 @@
+provider:
+  name: webhook
+  webhook:
+    image:
+      repository: ghcr.io/amoniacou/external-dns-digitalocean-webhook
+      tag: "0.1.3"
+    env:
+      - name: DO_TOKEN
+        valueFrom:
+          secretKeyRef:
+            name: digitalocean-api-token
+            key: api-token
+    args:
+      - --port=8080
+    securityContext:
+      runAsUser: 65532
+      runAsGroup: 65532
+      runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      capabilities:
+        drop:
+          - ALL
+
+extraArgs:
+  webhook-provider-url: http://localhost:8080
+
+policy: upsert-only
+
+domainFilters:
+  - luzero.online
+
+txtPrefix: externaldns-
+
+managedRecordTypes:
+  - A
+  - CNAME
+
+interval: 1h
+
+sources:
+  - service
+  - ingress
+  - gateway-httproute
+  - gateway-grpcroute
+  - gateway-tcproute

@@ -1,0 +1,35 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: external-dns
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-options: "Prune=false"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: infrastructure
+  sources:
+    - repoURL: https://kubernetes-sigs.github.io/external-dns/
+      chart: external-dns
+      targetRevision: 1.*
+      helm:
+        releaseName: external-dns
+        valueFiles:
+          - $values/infrastructure/controllers/external-dns/values.yaml
+    - repoURL: https://github.com/luzero-io/k8s-gitops.git
+      targetRevision: main
+      ref: values
+    - repoURL: https://github.com/luzero-io/k8s-gitops.git
+      targetRevision: main
+      path: infrastructure/controllers/external-dns/resources
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: external-dns
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false
+      - ServerSideApply=true

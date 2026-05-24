@@ -1,0 +1,37 @@
+apiVersion: networking.istio.io/v1
+kind: DestinationRule
+metadata:
+  name: ml-pipeline-mysql
+  namespace: kubeflow
+  labels:
+    application-crd-id: kubeflow-pipelines
+spec:
+  host: mysql.kubeflow.svc.cluster.local
+  trafficPolicy:
+    tls:
+      # MariaDB 10.5 does not negotiate Istio mTLS; disable TLS on outbound
+      mode: DISABLE
+---
+apiVersion: networking.istio.io/v1
+kind: DestinationRule
+metadata:
+  name: mysql
+  namespace: kubeflow
+spec:
+  host: mysql.kubeflow.svc.cluster.local
+  trafficPolicy:
+    tls:
+      mode: DISABLE
+---
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: mysql
+  namespace: kubeflow
+spec:
+  selector:
+    matchLabels:
+      app: mysql
+  mtls:
+    # MariaDB does not support Istio mTLS; accept plain TCP inbound
+    mode: DISABLE

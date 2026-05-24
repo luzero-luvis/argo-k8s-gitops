@@ -1,0 +1,28 @@
+tolerations:
+  - key: gpu
+    operator: Exists
+    effect: NoSchedule
+
+nodeSelector:
+  gpu: "true"
+
+serviceMonitor:
+  enabled: true
+
+queryFieldNames:
+  - name
+  - index
+  - uuid
+  - driver_version
+  - utilization.gpu
+  - utilization.memory
+  - memory.total
+  - memory.free
+  - memory.used
+  - temperature.gpu
+  - power.draw
+  - power.limit
+  - clocks.current.graphics
+  - clocks.current.memory
+  - clocks.current.sm
+  - fan.speed

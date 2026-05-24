@@ -1,0 +1,22 @@
+apiVersion: argocd-image-updater.argoproj.io/v1alpha1
+kind: ImageUpdater
+metadata:
+  name: small-go-webserver
+  namespace: argocd
+spec:
+  applicationRefs:
+    - namePattern: small-go-webserver
+      writeBackConfig:
+        method: git
+        gitConfig:
+          writeBackTarget: helmvalues:/apps/small-go-webserver/values.yaml
+      images:
+        - alias: app
+          imageName: ghcr.io/luzero-luvis/small-go-webserver:v1.0.1
+          commonUpdateSettings:
+            allowTags: "regexp:^v1\\.0\\.1$"
+            updateStrategy: digest
+            pullSecret: pullsecret:argocd/ghcr-credentials
+          manifestTargets:
+            helm:
+              spec: image.name

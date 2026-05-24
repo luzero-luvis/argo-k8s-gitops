@@ -1,0 +1,9 @@
+apiVersion: v2
+name: charts
+description: Production-grade Helm chart for Sirpi microservices
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+maintainers:
+  - name: Sirpi DevOps Team
+    email: luvis@luzero.io

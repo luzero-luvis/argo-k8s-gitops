@@ -1,0 +1,29 @@
+---
+defaultSettings:
+  kubernetesClusterAutoscalerEnabled: true
+  autoDeletePodWhenVolumeDetachedUnexpectedly: true
+  nodeDownPodDeletionPolicy: "delete-both-statefulset-and-deployment-pod"
+  nodeDrainPolicy: "block-if-contains-last-replica"
+  detachManuallyAttachedVolumesWhenCordoned: true
+  disableSchedulingOnCordonedNode: true
+  replicaReplenishmentWaitInterval: 600
+  allowVolumeCreationWithDegradedAvailability: false
+  autoSalvage: true
+  defaultReplicaCount: 1
+  storageOverProvisioningPercentage: 100
+  replicaAutoBalance: "best-effort"
+  defaultLonghornStaticStorageClass: longhorn
+  v2DataEngine: false
+
+persistence:
+  defaultClassReplicaCount: 1
+  defaultClass: true
+  defaultDataLocality: "best-effort"
+
+# Disable pre-upgrade checker for fresh installs
+preUpgradeChecker:
+  jobEnabled: false
+
+# Disable post-upgrade checker too
+postUpgradeChecker:
+  jobEnabled: false

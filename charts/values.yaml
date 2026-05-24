@@ -1,0 +1,186 @@
+global:
+  imagePullSecrets: []
+
+nameOverride: ""
+fullnameOverride: ""
+namespaceOverride: ""
+
+image:
+  name: ""
+  pullPolicy: IfNotPresent
+  pullSecrets: []
+
+replicaCount: 1
+
+strategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 1
+    maxUnavailable: 0
+
+command: []
+args: []
+
+containerPort: 8080
+additionalPorts: []
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8080
+  protocol: TCP
+  additionalPorts: []
+  annotations: {}
+  labels: {}
+  sessionAffinity: None
+  loadBalancerSourceRanges: []
+
+env: []
+envFrom: []
+
+envFromSecret:
+  enabled: false
+  secretName: ""
+
+configMap:
+  enabled: false
+  data: {}
+
+readinessProbe:
+  enabled: true
+  type: httpGet
+  httpGet:
+    path: /healthz
+    port: 8080
+    scheme: HTTP
+    httpHeaders: []
+  exec:
+    command: []
+  tcpSocket:
+    port: 8080
+  grpc:
+    port: 8080
+    service: ""
+  initialDelaySeconds: 15
+  periodSeconds: 30
+  timeoutSeconds: 15
+  successThreshold: 1
+  failureThreshold: 3
+
+livenessProbe:
+  enabled: true
+  type: httpGet
+  httpGet:
+    path: /healthz
+    port: 8080
+    scheme: HTTP
+    httpHeaders: []
+  exec:
+    command: []
+  tcpSocket:
+    port: 8080
+  grpc:
+    port: 8080
+    service: ""
+  initialDelaySeconds: 60
+  periodSeconds: 30
+  timeoutSeconds: 15
+  successThreshold: 1
+  failureThreshold: 6
+
+startupProbe:
+  enabled: false
+  type: httpGet
+  httpGet:
+    path: /healthz
+    port: 8080
+    scheme: HTTP
+    httpHeaders: []
+  exec:
+    command: []
+  tcpSocket:
+    port: 8080
+  grpc:
+    port: 8080
+    service: ""
+  initialDelaySeconds: 0
+  periodSeconds: 10
+  timeoutSeconds: 15
+  successThreshold: 1
+  failureThreshold: 30
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    memory: 256Mi
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  readOnlyRootFilesystem: true
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  seccompProfile:
+    type: RuntimeDefault
+
+serviceAccount:
+  create: false
+  annotations: {}
+  name: ""
+  automountServiceAccountToken: false
+
+terminationGracePeriodSeconds: 30
+dnsPolicy: ClusterFirst
+dnsConfig: {}
+hostAliases: []
+hostNetwork: false
+shareProcessNamespace: false
+
+lifecycle:
+  preStop:
+    exec:
+      command:
+        - /bin/sh
+        - -c
+        - sleep 10
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+topologySpreadConstraints:
+  enabled: false
+  constraints:
+    - maxSkew: 1
+      topologyKey: kubernetes.io/hostname
+      whenUnsatisfiable: DoNotSchedule
+
+priorityClassName: ""
+runtimeClassName: ""
+
+volumes: []
+volumeMounts: []
+
+tmpVolume:
+  enabled: true
+  sizeLimit: 1Gi
+
+deploymentAnnotations:
+  reloader.stakater.com/auto: "true"
+
+podLabels: {}
+podAnnotations: {}
+commonLabels: {}

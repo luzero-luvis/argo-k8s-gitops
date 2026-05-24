@@ -1,0 +1,33 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: n8n
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: infrastructure
+  sources:
+    - repoURL: https://community-charts.github.io/helm-charts
+      chart: n8n
+      targetRevision: "1.*"
+      helm:
+        releaseName: n8n
+        valueFiles:
+          - $values/infrastructure/controllers/n8n/values.yaml
+    - repoURL: https://github.com/luzero-io/k8s-gitops.git
+      targetRevision: main
+      ref: values
+    - repoURL: https://github.com/luzero-io/k8s-gitops.git
+      targetRevision: main
+      path: infrastructure/controllers/n8n/resources
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: n8n
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false
+      - ServerSideApply=true

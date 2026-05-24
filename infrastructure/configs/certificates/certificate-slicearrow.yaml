@@ -1,0 +1,13 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: wildcard-slicearrow
+  namespace: certificates
+spec:
+  secretName: wildcard-slicearrow-tls
+  issuerRef:
+    name: letsencrypt-route53
+    kind: ClusterIssuer
+  dnsNames:
+    - "*.slicearrow.com"
+    - "slicearrow.com"

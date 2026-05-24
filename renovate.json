@@ -1,0 +1,84 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "argocd": {
+    "managerFilePatterns": [
+      "/infrastructure/controllers/.+/application\\.yaml$/",
+      "/monitoring/controllers/.+/application\\.yaml$/"
+    ]
+  },
+  "packageRules": [
+    {
+      "description": "CRITICAL TIER 1 - Networking and Security",
+      "matchPackageNames": ["cert-manager", "external-dns", "metallb", "argo-cd"],
+      "automerge": false,
+      "minimumReleaseAge": "14 days",
+      "labels": ["renovate", "critical-tier-1", "networking"],
+      "reviewers": ["luvis-luzero"],
+      "prPriority": 10,
+      "schedule": ["after 10pm on sunday"]
+    },
+    {
+      "description": "CRITICAL TIER 2 - Gateway and Mesh",
+      "matchPackageNames": ["istio", "istiod", "istio-base", "gateway-api"],
+      "automerge": false,
+      "minimumReleaseAge": "14 days",
+      "labels": ["renovate", "critical-tier-2", "networking"],
+      "reviewers": ["luvis-luzero"],
+      "prPriority": 9,
+      "schedule": ["after 10pm on sunday"]
+    },
+    {
+      "description": "CRITICAL TIER 3 - Storage",
+      "matchPackageNames": ["longhorn"],
+      "automerge": false,
+      "minimumReleaseAge": "14 days",
+      "labels": ["renovate", "critical-tier-3", "storage"],
+      "reviewers": ["luvis-luzero"],
+      "prPriority": 8,
+      "schedule": ["after 10pm on sunday"]
+    },
+    {
+      "description": "STANDARD TIER - Lower risk infrastructure",
+      "matchPackageNames": ["metrics-server"],
+      "automerge": false,
+      "minimumReleaseAge": "7 days",
+      "labels": ["renovate", "standard-tier", "infrastructure"],
+      "reviewers": ["luvis-luzero"],
+      "prPriority": 5,
+      "schedule": ["after 10pm on sunday"]
+    },
+    {
+      "description": "MONITORING TIER - Observability stack",
+      "matchPackageNames": ["kube-prometheus-stack"],
+      "automerge": false,
+      "minimumReleaseAge": "7 days",
+      "labels": ["renovate", "monitoring"],
+      "reviewers": ["luvis-luzero"],
+      "prPriority": 6,
+      "schedule": ["after 10pm on sunday"]
+    },
+    {
+      "description": "Major updates - requires approval",
+      "matchUpdateTypes": ["major"],
+      "minimumReleaseAge": "30 days",
+      "labels": ["renovate", "major-update", "needs-approval"],
+      "prPriority": -10,
+      "dependencyDashboardApproval": true,
+      "reviewers": ["luvis-luzero"]
+    }
+  ],
+  "timezone": "UTC",
+  "prConcurrentLimit": 3,
+  "prHourlyLimit": 2,
+  "semanticCommits": "enabled",
+  "separateMajorMinor": true,
+  "separateMinorPatch": false,
+  "dependencyDashboard": true,
+  "dependencyDashboardTitle": "🤖 Renovate Dashboard - k8s-gitops Updates",
+  "vulnerabilityAlerts": {
+    "labels": ["security", "vulnerability", "urgent"],
+    "minimumReleaseAge": "0 days",
+    "reviewers": ["luvis-luzero"]
+  }
+}

@@ -1,0 +1,109 @@
+image:
+  repository: n8nio/n8n
+  pullPolicy: IfNotPresent
+  tag: ""
+
+service:
+  type: ClusterIP
+  port: 5678
+
+# Native chart field — reads N8N_ENCRYPTION_KEY from this secret
+existingEncryptionKeySecret: "n8n-encryption-key"
+
+timezone: "Asia/Kolkata"
+
+db:
+  type: postgresdb
+
+# Bundled Bitnami PostgreSQL subchart
+postgresql:
+  enabled: true
+  architecture: standalone
+  auth:
+    database: n8n
+    username: n8n
+    # Bitnami subchart reads key: password from this secret
+    existingSecret: "n8n-postgresql"
+  primary:
+    persistence:
+      enabled: true
+      storageClass: "longhorn"
+      size: 5Gi
+
+# Bundled Bitnami Redis subchart
+redis:
+  enabled: true
+  architecture: standalone
+  auth:
+    enabled: true
+    # Bitnami subchart reads key: redis-password from this secret
+    existingSecret: "n8n-redis"
+    existingSecretPasswordKey: "redis-password"
+  master:
+    persistence:
+      enabled: true
+      storageClass: "longhorn"
+      size: 2Gi
+
+main:
+  forceToUseStatefulset: true
+  count: 1
+  editorBaseUrl: "https://n8n-csr-interns.slicearrow.com"
+  extraEnvVars:
+    N8N_HOST: "n8n-csr-interns.slicearrow.com"
+    N8N_PROTOCOL: "https"
+    N8N_PROXY_HOPS: "1"
+    N8N_PUSH_BACKEND: "websocket"
+  resources:
+    requests:
+      cpu: "250m"
+      memory: "512Mi"
+    limits:
+      cpu: "1000m"
+      memory: "1Gi"
+  persistence:
+    enabled: true
+    storageClass: "longhorn"
+    size: 5Gi
+    accessMode: ReadWriteMany
+
+worker:
+  mode: queue
+  count: 2
+  concurrency: 10
+  extraEnvVars:
+    WEBHOOK_URL: "https://n8n-csr-interns.slicearrow.com/"
+    N8N_HOST: "n8n-csr-interns.slicearrow.com"
+    N8N_PROTOCOL: "https"
+    N8N_PROXY_HOPS: "1"
+  resources:
+    requests:
+      cpu: "250m"
+      memory: "512Mi"
+    limits:
+      cpu: "1000m"
+      memory: "1Gi"
+
+webhook:
+  mode: queue
+  count: 1
+  url: "https://n8n-csr-interns.slicearrow.com/"
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "256Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+
+ingress:
+  enabled: false
+
+binaryData:
+  mode: default
+
+diagnostics:
+  enabled: false
+
+versionNotifications:
+  enabled: false

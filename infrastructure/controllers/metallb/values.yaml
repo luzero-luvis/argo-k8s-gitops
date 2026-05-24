@@ -1,0 +1,22 @@
+controller:
+  tolerations:
+    - key: node-role.kubernetes.io/control-plane
+      operator: Exists
+      effect: NoSchedule
+    - key: gpu
+      operator: Equal
+      value: "true"
+      effect: NoSchedule
+
+speaker:
+  tolerateMaster: true
+  memberlist:
+    mlBindPort: 7947
+  tolerations:
+    - key: node-role.kubernetes.io/control-plane
+      operator: Exists
+      effect: NoSchedule
+    - key: gpu
+      operator: Equal
+      value: "true"
+      effect: NoSchedule

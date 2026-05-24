@@ -1,0 +1,54 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: luzero-gateway
+  namespace: istio-system
+  annotations:
+    external-dns.alpha.kubernetes.io/target: "115.246.211.179"
+    external-dns.alpha.kubernetes.io/ttl: "300"
+spec:
+  gatewayClassName: istio
+  infrastructure:
+    labels:
+      istio: ingressgateway
+  listeners:
+    - name: https
+      hostname: "*.luzero.online"
+      port: 443
+      protocol: HTTPS
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: wildcard-tls
+            namespace: certificates
+            kind: Secret
+      allowedRoutes:
+        namespaces:
+          from: All
+    - name: http
+      hostname: "*.luzero.online"
+      port: 80
+      protocol: HTTP
+      allowedRoutes:
+        namespaces:
+          from: All
+    - name: slicearrow-https
+      hostname: "*.slicearrow.com"
+      port: 443
+      protocol: HTTPS
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - kind: Secret
+            name: wildcard-slicearrow-tls
+            namespace: certificates
+      allowedRoutes:
+        namespaces:
+          from: All
+    - name: slicearrow-http
+      hostname: "*.slicearrow.com"
+      port: 80
+      protocol: HTTP
+      allowedRoutes:
+        namespaces:
+          from: All

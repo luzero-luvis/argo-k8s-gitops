@@ -1,0 +1,176 @@
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: ml-pipeline-ui
+  namespace: kubeflow
+  labels:
+    app.kubernetes.io/component: ml-pipeline
+    app.kubernetes.io/name: kubeflow-pipelines
+    application-crd-id: kubeflow-pipelines
+spec:
+  selector:
+    matchLabels:
+      app: ml-pipeline-ui
+  rules:
+    - from:
+        - source:
+            principals:
+              - cluster.local/ns/istio-system/sa/istio-ingressgateway-service-account
+              - cluster.local/ns/istio-system/sa/luzero-gateway-istio
+    - when:
+        - key: request.headers[authorization]
+          values:
+            - '*'
+        - key: request.headers[kubeflow-userid]
+          notValues:
+            - '*'
+---
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: central-dashboard
+  namespace: kubeflow
+  labels:
+    app: centraldashboard
+    app.kubernetes.io/component: centraldashboard
+    app.kubernetes.io/name: centraldashboard
+    kustomize.component: centraldashboard
+spec:
+  action: ALLOW
+  selector:
+    matchLabels:
+      app: centraldashboard
+  rules:
+    - from:
+        - source:
+            principals:
+              - cluster.local/ns/istio-system/sa/istio-ingressgateway-service-account
+              - cluster.local/ns/istio-system/sa/luzero-gateway-istio
+---
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: jupyter-web-app
+  namespace: kubeflow
+  labels:
+    app: jupyter-web-app
+    kustomize.component: jupyter-web-app
+spec:
+  action: ALLOW
+  selector:
+    matchLabels:
+      app: jupyter-web-app
+  rules:
+    - from:
+        - source:
+            principals:
+              - cluster.local/ns/istio-system/sa/istio-ingressgateway-service-account
+              - cluster.local/ns/istio-system/sa/luzero-gateway-istio
+---
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: kserve-models-web-app
+  namespace: kubeflow
+  labels:
+    app: kserve-models-web-app
+    app.kubernetes.io/component: kserve-models-web-app
+    app.kubernetes.io/name: kserve
+    kustomize.component: kserve-models-web-app
+spec:
+  action: ALLOW
+  selector:
+    matchLabels:
+      app: kserve-models-web-app
+  rules:
+    - from:
+        - source:
+            principals:
+              - cluster.local/ns/istio-system/sa/istio-ingressgateway-service-account
+              - cluster.local/ns/istio-system/sa/luzero-gateway-istio
+---
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: volumes-web-app
+  namespace: kubeflow
+  labels:
+    app: volumes-web-app
+    kustomize.component: volumes-web-app
+spec:
+  action: ALLOW
+  selector:
+    matchLabels:
+      app: volumes-web-app
+  rules:
+    - from:
+        - source:
+            principals:
+              - cluster.local/ns/istio-system/sa/istio-ingressgateway-service-account
+              - cluster.local/ns/istio-system/sa/luzero-gateway-istio
+---
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: tensorboards-web-app
+  namespace: kubeflow
+  labels:
+    app: tensorboards-web-app
+    kustomize.component: tensorboards-web-app
+spec:
+  action: ALLOW
+  selector:
+    matchLabels:
+      app: tensorboards-web-app
+  rules:
+    - from:
+        - source:
+            principals:
+              - cluster.local/ns/istio-system/sa/istio-ingressgateway-service-account
+              - cluster.local/ns/istio-system/sa/luzero-gateway-istio
+---
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: katib-ui
+  namespace: kubeflow
+  labels:
+    app: katib-ui
+    kustomize.component: katib
+spec:
+  action: ALLOW
+  selector:
+    matchLabels:
+      app: katib-ui
+  rules:
+    - from:
+        - source:
+            principals:
+              - cluster.local/ns/istio-system/sa/istio-ingressgateway-service-account
+              - cluster.local/ns/istio-system/sa/luzero-gateway-istio
+---
+# profiles-kfam: allow centraldashboard + Cilium-bypass internal calls
+# (Cilium eBPF bypasses Envoy outbound so no mTLS source principal is available
+#  for in-cluster HTTP calls; the second rule matches those by absence of
+#  kubeflow-userid header)
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: profiles-kfam
+  namespace: kubeflow
+  labels:
+    kustomize.component: profiles
+spec:
+  action: ALLOW
+  selector:
+    matchLabels:
+      kustomize.component: profiles
+  rules:
+    - from:
+        - source:
+            principals:
+              - cluster.local/ns/kubeflow/sa/centraldashboard
+    - when:
+        - key: request.headers[kubeflow-userid]
+          notValues:
+            - '*'
