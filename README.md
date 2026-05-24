@@ -19,7 +19,7 @@ GitOps repository for Kubernetes cluster. The repository is structured around Ar
 - [Networking and Ingress](#networking-and-ingress)
 - [Storage](#storage)
 - [Monitoring](#monitoring)
-- [External nginx Proxy](#external-nginx-proxy)
+- [Ingress](#ingress)
 - [Upgrade Automation](#upgrade-automation)
 - [Day-to-day Workflow](#day-to-day-workflow)
 - [Runtime Prerequisites](#runtime-prerequisites)
@@ -30,10 +30,9 @@ GitOps repository for Kubernetes cluster. The repository is structured around Ar
 
 ```
 Internet
-  └── nginx reverse proxy (luzeroserver2 · 115.246.211.179)
-        └── MetalLB VIP (192.168.29.100)
-              └── Istio Gateway (luzero-gateway)
-                    └── HTTPRoutes → Services
+  └── Cloud Load Balancer
+        └── Istio Gateway (luzero-gateway)
+              └── HTTPRoutes → Services
 ```
 
 All cluster state is declared in this repository. Argo CD pulls from `main`, applies changes automatically, and self-heals any drift. No imperative `kubectl apply` is required outside of the one-time bootstrap step.
@@ -53,7 +52,7 @@ bootstrap/
   monitoring-configs.yaml          # App-of-apps: wave 4
 
 charts/
-  Chart.yaml                       # Shared Helm chart for Sirpi microservices
+  Chart.yaml                       # Shared Helm chart for Luzero microservices
   values.yaml                      # Default values
   templates/
     deployment.yaml
@@ -81,7 +80,7 @@ infrastructure/
     istio/                         # Gateway, AuthorizationPolicy, Envoy filters
     certificates/                  # Certificate, Namespace, ReferenceGrant
     cert-manager/                  # ClusterIssuers
-    metallb/                       # IPAddressPool, L2Advertisement
+    metallb/                       # IPAddressPool, L2Advertisement (commented out — cloud deploy)
     n8n/                           # HTTPRoutes
     [others]
 
@@ -127,9 +126,9 @@ That single command gives Argo CD a pointer to the `bootstrap/` directory. From 
 |------|-------------|----------|
 | 0 | appprojects | AppProject definitions |
 | 1 | infrastructure-controllers | CRDs, controllers, namespaces |
-| 2 | infrastructure-configs | Gateway, HTTPRoutes, Certificates, MetalLB config |
+| 2 | infrastructure-configs | Gateway, HTTPRoutes, Certificates |
 | 3 | apps | Workload applications |
-| 3 | monitoring-controllers | kube-prometheus-stack, GPU exporter |
+| 3 | monitoring-controllers | kube-prometheus-stack |
 | 4 | monitoring-configs | Grafana dashboards, routing |
 
 ---
@@ -168,8 +167,8 @@ infrastructure/controllers/<name>/
 | `istio-base` | istio-release | Istio CRDs and base |
 | `istiod` | istio-release | Istio control plane |
 | `longhorn` | charts.longhorn.io | Default storage class |
-| `metallb` | metallb | Bare-metal LoadBalancer |
-| `metrics-server` | kubernetes-sigs | `--kubelet-insecure-tls` for bare-metal |
+| `metallb` | metallb | Bare-metal LoadBalancer *(commented out for cloud deploy)* |
+| `metrics-server` | kubernetes-sigs | Cluster resource metrics |
 | `argo-rollouts` | argoproj/argo-helm | Progressive delivery |
 | `n8n` | community-charts | Workflow automation |
 
@@ -311,12 +310,12 @@ All ingress flows through a shared Istio Gateway and Gateway API `HTTPRoute` res
 
 | Listener name | Port | Protocol | Domains |
 |---------------|------|----------|---------|
-| `luzerofy-http` | 80 | HTTP | `*.luzero.online` |
-| `luzerofy-https` | 443 | HTTPS | `*.luzero.online` |
+| `http` | 80 | HTTP | `*.luzero.online` |
+| `https` | 443 | HTTPS | `*.luzero.online` |
 | `slicearrow-http` | 80 | HTTP | `*.slicearrow.com` |
 | `slicearrow-https` | 443 | HTTPS | `*.slicearrow.com` |
 
-> **Important:** nginx terminates TLS externally and always forwards to MetalLB on port 80. HTTPRoutes for slicearrow.com services must attach to the `slicearrow-http` listener (port 80), not `slicearrow-https`.
+> **Note:** HTTPRoutes for slicearrow.com services that receive forwarded HTTP traffic must attach to the `slicearrow-http` listener (port 80).
 
 **TLS certificates** are issued by cert-manager using Let's Encrypt DNS-01 (DigitalOcean) and stored in the `certificates` namespace. A `ReferenceGrant` allows `istio-system` to reference these secrets cross-namespace.
 
@@ -353,43 +352,11 @@ Grafana is accessible at `grafana.luzero.online`.
 
 ---
 
-## External nginx Proxy
+## Ingress
 
-Traffic from the internet hits `luzeroserver2` (`115.246.211.179`) which acts as a TLS-terminating reverse proxy in front of the cluster MetalLB VIP (`192.168.29.100`).
+On cloud, the cluster load balancer is provisioned by the cloud provider and points directly at the Istio Gateway. MetalLB is not used.
 
-### Nginx Site Configs
-
-| File | Domains |
-|------|---------|
-| `/etc/nginx/sites-available/k8s-luzerofy` | `*.luzero.online` |
-| `/etc/nginx/sites-available/k8s-slicearrow` | `*.slicearrow.com` |
-
-Both configs proxy all traffic to `192.168.29.100:80` with proper `Host`, `X-Forwarded-For`, `X-Forwarded-Proto`, and WebSocket upgrade headers. Symlinks in `sites-enabled/` activate them.
-
-### TLS Certificate Sync
-
-Wildcard certificates are issued inside the cluster by cert-manager and synced to the master server every 12 hours:
-
-```
-0 */12 * * * /usr/local/bin/sync-wildcard-cert.sh >> /var/log/cert-sync.log 2>&1
-```
-
-| Kubernetes Secret | Nginx cert path |
-|-------------------|-----------------|
-| `certificates/wildcard-tls` | `/etc/nginx/certs/luzero.online.crt` / `.key` |
-| `certificates/wildcard-slicearrow-tls` | `/etc/nginx/certs/slicearrow.com.crt` / `.key` |
-
-To force an immediate sync:
-
-```bash
-sudo bash /usr/local/bin/sync-wildcard-cert.sh
-```
-
-### SSH Access
-
-```bash
-ssh -i ~/.ssh/k8s_upgrade luzeroserver2@115.246.211.179 -p 61002
-```
+TLS certificates are issued by cert-manager using Let's Encrypt DNS-01 (DigitalOcean) and stored in the `certificates` namespace. A `ReferenceGrant` allows `istio-system` to reference these secrets cross-namespace.
 
 ---
 
@@ -431,7 +398,6 @@ The following must exist before applying the bootstrap manifests:
 | `ghcr-credentials` (argocd ns) | Pull secret for `ghcr.io` |
 | `argocd-image-updater-secret` (argocd ns) | Git token for image updater write-back |
 | `grafana-admin` | Grafana admin credentials |
-| MetalLB IP `192.168.29.100/32` | Layer-2 reachable from the proxy server |
 
 > **Note:** External Secrets Operator is referenced by `ExternalSecret` resources in this repository but is not installed by it. Ensure ESO is present before syncing manifests that depend on it.
 
@@ -448,4 +414,3 @@ CLI login:
 ```bash
 argocd login argocd.luzero.online --grpc-web
 ```
->>>>>>> 9343e38 (feat : argo gitops repo)
