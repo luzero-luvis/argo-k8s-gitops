@@ -31,7 +31,7 @@ spec:
     - https://github.com/kubernetes-sigs/gateway-api
     - https://github.com/kubernetes-csi/external-snapshotter.git
     - https://charts.longhorn.io
-    - https://metallb.github.io/metallb
+    # - https://metallb.github.io/metallb
     - https://istio-release.storage.googleapis.com/charts
     - https://community-charts.github.io/helm-charts
   destinations:
@@ -54,17 +54,9 @@ spec:
     - server: https://kubernetes.default.svc
       namespace: kube-system
     - server: https://kubernetes.default.svc
-      namespace: dhanvithshetty-luzero
-    - server: https://kubernetes.default.svc
-      namespace: kubeflow
-    - server: https://kubernetes.default.svc
-      namespace: notebook-gateway-sync
-    - server: https://kubernetes.default.svc
-      namespace: oauth2-proxy
-    - server: https://kubernetes.default.svc
       namespace: longhorn-system
-    - server: https://kubernetes.default.svc
-      namespace: metallb-system
+    # - server: https://kubernetes.default.svc
+    #   namespace: metallb-system
     - server: https://kubernetes.default.svc
       namespace: n8n
   clusterResourceWhitelist:
@@ -101,7 +93,6 @@ spec:
   sourceRepos:
     - https://github.com/luzero-io/k8s-gitops.git
     - https://prometheus-community.github.io/helm-charts
-    - https://utkuozdemir.org/helm-charts
   destinations:
     - server: https://kubernetes.default.svc
       namespace: monitoring

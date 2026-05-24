@@ -10,6 +10,6 @@ resources:
   - istio-base/application.yaml
   - istiod/application.yaml
   - longhorn/application.yaml
-  - metallb/application.yaml
+  # - metallb/application.yaml
   - metrics-server/application.yaml
   - n8n/application.yaml

@@ -79,7 +79,6 @@ infrastructure/
         [additional manifests]
   configs/
     istio/                         # Gateway, AuthorizationPolicy, Envoy filters
-    kubeflow/                      # Routing, security, service patches, user config
     certificates/                  # Certificate, Namespace, ReferenceGrant
     cert-manager/                  # ClusterIssuers
     metallb/                       # IPAddressPool, L2Advertisement
@@ -329,7 +328,6 @@ All ingress flows through a shared Istio Gateway and Gateway API `HTTPRoute` res
 |----------|---------|
 | `argocd.luzero.online` | Argo CD UI |
 | `grafana.luzero.online` | Grafana |
-| `kubeflow.luzero.online` | Kubeflow dashboard |
 | `argo-rollouts.luzero.online` | Argo Rollouts dashboard |
 | `n8n-csr-interns.slicearrow.com` | n8n workflow automation |
 
@@ -348,9 +346,8 @@ Monitoring is managed from `monitoring/controllers/`:
 | Component | Purpose |
 |-----------|---------|
 | `kube-prometheus-stack` | Prometheus, Alertmanager, and Grafana |
-| `nvidia-gpu-exporter` | GPU metrics for nodes labeled `gpu=true` |
 
-Grafana dashboards are loaded via labeled `ConfigMap` resources in `monitoring/configs/dashboards/`. The NVIDIA GPU dashboard is included at `monitoring/configs/dashboards/nvidia-gpu.yaml`.
+Grafana dashboards are loaded via labeled `ConfigMap` resources in `monitoring/configs/dashboards/`.
 
 Grafana is accessible at `grafana.luzero.online`.
 
@@ -435,7 +432,6 @@ The following must exist before applying the bootstrap manifests:
 | `argocd-image-updater-secret` (argocd ns) | Git token for image updater write-back |
 | `grafana-admin` | Grafana admin credentials |
 | MetalLB IP `192.168.29.100/32` | Layer-2 reachable from the proxy server |
-| GPU nodes labeled `gpu=true` | Required only if NVIDIA monitoring is expected |
 
 > **Note:** External Secrets Operator is referenced by `ExternalSecret` resources in this repository but is not installed by it. Ensure ESO is present before syncing manifests that depend on it.
 
