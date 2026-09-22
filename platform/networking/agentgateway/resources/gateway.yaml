@@ -1,0 +1,55 @@
+# This Gateway was originally created imperatively. Keeping its live spec here
+# makes Argo CD the source of truth. The public address is routed directly to
+# the MetalLB VIP; no nginx proxy is in this request path.
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: agentgateway
+  namespace: agentgateway-system
+  annotations:
+    external-dns.kubernetes.io/target: "115.246.211.179"
+spec:
+  gatewayClassName: agentgateway
+  listeners:
+    - name: http
+      protocol: HTTP
+      port: 80
+      allowedRoutes:
+        namespaces:
+          from: All
+    - name: https
+      hostname: ai.example.com
+      protocol: HTTPS
+      port: 443
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: platformfy-wildcard-tls
+            kind: Secret
+      allowedRoutes:
+        namespaces:
+          from: All
+    - name: https-argo-rollouts
+      hostname: argo-rollouts.example.com
+      protocol: HTTPS
+      port: 443
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: platformfy-wildcard-tls
+            kind: Secret
+      allowedRoutes:
+        namespaces:
+          from: All
+    - name: https-argocd
+      hostname: argocd.example.com
+      protocol: HTTPS
+      port: 443
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: platformfy-wildcard-tls
+            kind: Secret
+      allowedRoutes:
+        namespaces:
+          from: All

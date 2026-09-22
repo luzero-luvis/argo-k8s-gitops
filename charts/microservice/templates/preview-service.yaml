@@ -1,0 +1,32 @@
+{{- $previewName := include "charts.previewServiceName" . -}}
+{{- $strategy := .Values.rollout.strategy -}}
+{{- if and .Values.rollout.enabled (or (empty $strategy) (eq (dig "blueGreen" "previewService" "" $strategy) $previewName) (eq (dig "canary" "canaryService" "" $strategy) $previewName)) }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "charts.previewServiceName" . }}
+  namespace: {{ include "charts.namespace" . }}
+  labels:
+    {{- include "charts.labels" . | nindent 4 }}
+    {{- with .Values.service.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  type: ClusterIP
+  {{- if .Values.service.sessionAffinity }}
+  sessionAffinity: {{ .Values.service.sessionAffinity }}
+  {{- end }}
+  ports:
+    - name: http
+      port: {{ .Values.service.port }}
+      targetPort: {{ .Values.service.targetPort }}
+      protocol: {{ .Values.service.protocol }}
+  {{- range .Values.service.additionalPorts }}
+    - name: {{ .name }}
+      port: {{ .port }}
+      targetPort: {{ .targetPort }}
+      protocol: {{ .protocol | default "TCP" }}
+  {{- end }}
+  selector:
+    {{- include "charts.selectorLabels" . | nindent 4 }}
+{{- end }}

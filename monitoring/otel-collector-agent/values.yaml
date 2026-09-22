@@ -1,0 +1,105 @@
+fullnameOverride: otel-collector-agent
+mode: daemonset
+
+image:
+  repository: ghcr.io/open-telemetry/opentelemetry-collector-releases/opentelemetry-collector-k8s
+command:
+  name: otelcol-k8s
+
+presets:
+  logsCollection:
+    enabled: true
+    includeCollectorLogs: false
+    storeCheckpoints: false
+  kubernetesAttributes:
+    enabled: true
+    extractAllPodLabels: false
+    extractAllPodAnnotations: false
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+
+tolerations:
+  - operator: Exists
+
+ports:
+  otlp:
+    enabled: false
+  otlp-http:
+    enabled: false
+  jaeger-compact:
+    enabled: false
+  jaeger-thrift:
+    enabled: false
+  jaeger-grpc:
+    enabled: false
+  zipkin:
+    enabled: false
+  metrics:
+    enabled: true
+    containerPort: 8888
+    servicePort: 8888
+    protocol: TCP
+
+podMonitor:
+  enabled: true
+  metricsEndpoints:
+    - port: metrics
+      interval: 30s
+
+alternateConfig:
+  extensions:
+    health_check:
+      endpoint: 0.0.0.0:13133
+  receivers: {}
+  processors:
+    memory_limiter:
+      check_interval: 5s
+      limit_mib: 384
+      spike_limit_mib: 96
+    resource/logs:
+      attributes:
+        - key: service.name
+          from_attribute: k8s.container.name
+          action: upsert
+    batch: {}
+  exporters:
+    otlp:
+      endpoint: otel-collector-gateway.monitoring.svc.cluster.local:4317
+      tls:
+        insecure: true
+      sending_queue:
+        enabled: true
+      retry_on_failure:
+        enabled: true
+  service:
+    extensions:
+      - health_check
+    pipelines:
+      logs:
+        receivers: []
+        processors:
+          - memory_limiter
+          - resource/logs
+          - batch
+        exporters:
+          - otlp
+    telemetry:
+      metrics:
+        readers:
+          - pull:
+              exporter:
+                prometheus:
+                  host: 0.0.0.0
+                  port: 8888

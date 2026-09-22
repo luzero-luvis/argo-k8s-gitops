@@ -1,0 +1,20 @@
+# Control plane for agentgateway (agentgateway-system namespace), requires
+# the Gateway API CRDs already installed by platform/networking/gateway-api.
+# Live usage after install is ~3m CPU / 54Mi memory - requests/limits below
+# give headroom without letting it land unbounded on the already-tight
+# node1/node3 (see docs/COMPONENTS.md node capacity notes).
+# Keep the Helm-managed control plane separate from Gateway data-plane resources.
+# A Gateway named `agentgateway` generates its own ServiceAccount and Service;
+# using the chart default name makes both controllers fight over those objects.
+fullnameOverride: agentgateway-controller
+
+podSecurityContext:
+  runAsNonRoot: true
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 250m
+    memory: 256Mi

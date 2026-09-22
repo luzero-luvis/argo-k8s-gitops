@@ -1,0 +1,87 @@
+{{- if and .Values.rollout.enabled .Values.rollout.analysis.enabled (empty .Values.rollout.strategy) }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "charts.k6ConfigMapName" . }}
+  namespace: {{ include "charts.namespace" . }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+  labels:
+    {{- include "charts.labels" . | nindent 4 }}
+data:
+  preview.js: |
+    import http from 'k6/http';
+    import { sleep } from 'k6';
+
+    export const options = {
+      vus: {{ .Values.rollout.analysis.k6.vus }},
+      duration: {{ .Values.rollout.analysis.k6.duration | quote }},
+      thresholds: {
+        http_req_failed: [{{ printf "rate<%v" .Values.rollout.analysis.k6.maxFailureRate | quote }}],
+        http_req_duration: [{{ printf "p(95)<%v" .Values.rollout.analysis.k6.maxP95Ms | quote }}],
+      },
+    };
+
+    export default function () {
+      http.get({{ printf "http://%s.%s.svc.cluster.local:%v%s" (include "charts.previewServiceName" .) (include "charts.namespace" .) .Values.service.port .Values.rollout.analysis.k6.path | quote }});
+      sleep(0.2);
+    }
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: {{ include "charts.analysisTemplateName" . }}
+  namespace: {{ include "charts.namespace" . }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+  labels:
+    {{- include "charts.labels" . | nindent 4 }}
+spec:
+  args:
+    - name: latest-hash
+  metrics:
+    - name: k6-preview-load
+      provider:
+        job:
+          spec:
+            backoffLimit: 0
+            activeDeadlineSeconds: 180
+            template:
+              spec:
+                restartPolicy: Never
+                automountServiceAccountToken: false
+                containers:
+                  - name: k6
+                    image: {{ .Values.rollout.analysis.k6.image | quote }}
+                    imagePullPolicy: IfNotPresent
+                    command: [k6, run, /scripts/preview.js]
+                    resources:
+                      requests:
+                        cpu: 100m
+                        memory: 128Mi
+                      limits:
+                        cpu: 500m
+                        memory: 512Mi
+                    volumeMounts:
+                      - name: script
+                        mountPath: /scripts
+                        readOnly: true
+                volumes:
+                  - name: script
+                    configMap:
+                      name: {{ include "charts.k6ConfigMapName" . }}
+    - name: prometheus-preview-ready
+      initialDelay: {{ .Values.rollout.analysis.prometheus.initialDelay | quote }}
+      count: 1
+      successCondition: result[0] >= {{ .Values.rollout.analysis.prometheus.minReadyPods }}
+      failureLimit: 0
+      provider:
+        prometheus:
+          address: {{ .Values.rollout.analysis.prometheus.address | quote }}
+          query: |
+            sum(kube_pod_container_status_ready{
+              namespace="{{ include "charts.namespace" . }}",
+              container="{{ include "charts.name" . }}",
+              pod=~"{{ include "charts.fullname" . }}-{{ "{{args.latest-hash}}" }}-.*"
+            }) or vector(0)
+{{- end }}

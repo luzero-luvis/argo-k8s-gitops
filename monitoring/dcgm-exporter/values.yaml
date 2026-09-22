@@ -1,0 +1,25 @@
+arguments:
+  - -d
+  - f
+
+serviceMonitor:
+  enabled: true
+  interval: 30s
+  scrapeTimeout: 25s
+
+nodeSelector:
+  hami.io/managed: "true"
+
+tolerations:
+  - key: dedicated
+    operator: Equal
+    value: github-actions-runner
+    effect: NoSchedule
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi

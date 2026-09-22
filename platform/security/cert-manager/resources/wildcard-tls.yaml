@@ -1,0 +1,45 @@
+# A dedicated issuer prevents this new public certificate from changing the
+# behavior of older Certificate resources that reference other issuer names.
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-platformfy-prod
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+spec:
+  acme:
+    email: platform@example.com
+    server: https://acme-v02.api.letsencrypt.org/directory
+    privateKeySecretRef:
+      name: letsencrypt-platformfy-prod-account-key
+    solvers:
+      - selector:
+          dnsZones:
+            - example.com
+        dns01:
+          digitalocean:
+            tokenSecretRef:
+              name: digitalocean-api-token
+              key: api-token
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: platformfy-wildcard-tls
+  namespace: agentgateway-system
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  secretName: platformfy-wildcard-tls
+  issuerRef:
+    name: letsencrypt-platformfy-prod
+    kind: ClusterIssuer
+  dnsNames:
+    - example.com
+    - '*.example.com'
+  privateKey:
+    rotationPolicy: Always
+  usages:
+    - digital signature
+    - key encipherment
+    - server auth

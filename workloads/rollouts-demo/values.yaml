@@ -1,0 +1,54 @@
+image:
+  name: argoproj/rollouts-demo:blue
+  pullPolicy: Always
+
+replicaCount: 2
+
+rollout:
+  enabled: true
+  blueGreen:
+    autoPromotionEnabled: false
+    scaleDownDelaySeconds: 30
+
+containerPort: 8080
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8080
+
+readinessProbe:
+  enabled: true
+  type: httpGet
+  httpGet:
+    path: /
+    port: 8080
+    scheme: HTTP
+  initialDelaySeconds: 2
+  periodSeconds: 5
+  timeoutSeconds: 2
+  failureThreshold: 3
+
+livenessProbe:
+  enabled: true
+  type: httpGet
+  httpGet:
+    path: /
+    port: 8080
+    scheme: HTTP
+  initialDelaySeconds: 5
+  periodSeconds: 10
+  timeoutSeconds: 2
+  failureThreshold: 3
+
+# The official demo image is built FROM scratch and has no /bin/sh.
+lifecycle: null
+
+terminationGracePeriodSeconds: 5
+
+resources:
+  requests:
+    cpu: 25m
+    memory: 32Mi
+  limits:
+    memory: 64Mi

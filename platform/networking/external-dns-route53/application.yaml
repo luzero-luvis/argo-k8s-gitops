@@ -1,0 +1,48 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: external-dns-route53
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-options: "Prune=false"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: platform
+  sources:
+    - repoURL: https://kubernetes-sigs.github.io/external-dns/
+      chart: external-dns
+      targetRevision: 1.*
+      helm:
+        releaseName: external-dns-route53
+        valueFiles:
+          - $values/platform/networking/external-dns-route53/values.yaml
+    - repoURL: https://github.com/luzero-luvis/argo-k8s-gitops.git
+      targetRevision: main
+      ref: values
+    - repoURL: https://github.com/luzero-luvis/argo-k8s-gitops.git
+      targetRevision: main
+      path: platform/networking/external-dns-route53/resources
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: external-dns
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false
+      - ServerSideApply=true
+  # The ExternalSecret CRD automatically injects default values into fields
+  # (conversionStrategy, decodingStrategy, metadataPolicy, deletionPolicy)
+  # that are not written in git. ArgoCD sees them as a diff and marks the app
+  # OutOfSync even though nothing is wrong. These entries tell ArgoCD to
+  # ignore those CRD-injected defaults when comparing git vs cluster.
+  ignoreDifferences:
+    - group: external-secrets.io
+      kind: ExternalSecret
+      jqPathExpressions:
+        - .spec.data[].remoteRef.conversionStrategy
+        - .spec.data[].remoteRef.decodingStrategy
+        - .spec.data[].remoteRef.metadataPolicy
+        - .spec.target.deletionPolicy

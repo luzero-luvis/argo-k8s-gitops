@@ -1,0 +1,21 @@
+monitoring:
+  podMonitorEnabled: true
+  # Grafana sidecar picks up ConfigMaps labeled grafana_dashboard=1 from any
+  # namespace (searchNamespace: ALL in kube-prometheus-stack values). The
+  # chart's default sidecarLabel already sets that label.
+  grafanaDashboard:
+    create: true
+    annotations:
+      grafana_dashboard_folder: "CloudNativePG"
+
+resources:
+  limits:
+    cpu: 200m
+    memory: 256Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+config:
+  data:
+    ENABLE_JSON_LOGGING: "true"

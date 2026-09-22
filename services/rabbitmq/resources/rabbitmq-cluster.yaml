@@ -1,0 +1,30 @@
+apiVersion: rabbitmq.com/v1beta1
+kind: RabbitmqCluster
+metadata:
+  name: rabbitmq
+  namespace: rabbitmq
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+
+spec:
+  replicas: 1
+  image: rabbitmq:4.3.4-management
+
+  # Temporary Celery compatibility. Celery's remote-control/pidbox consumer
+  # declares a transient non-exclusive queue, denied by default in RabbitMQ
+  # 4.3. Remove after the application uses supported exclusive/durable queues.
+  rabbitmq:
+    additionalConfig: |
+      deprecated_features.permit.transient_nonexcl_queues = true
+
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+
+  persistence:
+    storageClassName: longhorn
+    storage: 10Gi

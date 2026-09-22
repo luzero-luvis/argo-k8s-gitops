@@ -1,0 +1,47 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: rollouts-demo
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: workloads
+  sources:
+    - repoURL: https://github.com/luzero-luvis/argo-k8s-gitops.git
+      path: charts/microservice
+      targetRevision: main
+      helm:
+        releaseName: rollouts-demo
+        valueFiles:
+          - $values/workloads/rollouts-demo/values.yaml
+    - repoURL: https://github.com/luzero-luvis/argo-k8s-gitops.git
+      targetRevision: main
+      ref: values
+    - repoURL: https://github.com/luzero-luvis/argo-k8s-gitops.git
+      targetRevision: main
+      path: workloads/rollouts-demo/resources
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: rollouts-demo
+  ignoreDifferences:
+    - group: ""
+      kind: Service
+      namespace: rollouts-demo
+      name: rollouts-demo
+      jsonPointers:
+        - /spec/selector/rollouts-pod-template-hash
+    - group: ""
+      kind: Service
+      namespace: rollouts-demo
+      name: rollouts-demo-preview
+      jsonPointers:
+        - /spec/selector/rollouts-pod-template-hash
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false
+      - ServerSideApply=true
+      - RespectIgnoreDifferences=true

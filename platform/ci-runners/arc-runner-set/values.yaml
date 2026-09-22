@@ -1,0 +1,32 @@
+githubConfigUrl: https://github.com/luzero-luvis
+githubConfigSecret: github-config-secret
+
+controllerServiceAccount:
+  namespace: action-runner-controller
+  name: arc-gha-rs-controller
+
+minRunners: 1
+maxRunners: 10
+
+containerMode:
+  type: dind
+
+template:
+  metadata:
+    labels:
+      platform.example.com/workload: github-actions-runner
+  spec:
+    priorityClassName: github-actions-low-priority
+    tolerations:
+      - key: dedicated
+        operator: Equal
+        value: github-actions-runner
+        effect: NoSchedule
+    topologySpreadConstraints:
+      - maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: ScheduleAnyway
+        nodeTaintsPolicy: Honor
+        labelSelector:
+          matchLabels:
+            platform.example.com/workload: github-actions-runner

@@ -1,0 +1,46 @@
+{{- if .Values.rollout.enabled }}
+{{- if .Values.rollout.strategy }}
+{{- if or (ne (len .Values.rollout.strategy) 1) (eq (hasKey .Values.rollout.strategy "blueGreen") (hasKey .Values.rollout.strategy "canary")) }}
+{{- fail "rollout.strategy must contain exactly one of blueGreen or canary" }}
+{{- end }}
+{{- if .Values.rollout.analysis.enabled }}
+{{- fail "rollout.analysis.enabled is for the built-in blue/green strategy; use your own AnalysisTemplate with rollout.strategy" }}
+{{- end }}
+{{- else }}
+{{- if and .Values.rollout.analysis.enabled (not .Values.rollout.blueGreen.autoPromotionEnabled) }}
+{{- fail "rollout.analysis.enabled requires rollout.blueGreen.autoPromotionEnabled=true" }}
+{{- end }}
+{{- if and .Values.rollout.analysis.enabled (not (empty .Values.rollout.blueGreen.prePromotionAnalysis)) }}
+{{- fail "use either rollout.analysis.enabled or rollout.blueGreen.prePromotionAnalysis, not both" }}
+{{- end }}
+{{- if and .Values.rollout.blueGreen.autoPromotionEnabled (not .Values.rollout.analysis.enabled) (empty .Values.rollout.blueGreen.prePromotionAnalysis.templates) }}
+{{- fail "enable rollout.analysis.enabled or provide rollout.blueGreen.prePromotionAnalysis.templates for automatic promotion" }}
+{{- end }}
+{{- if .Values.rollout.analysis.enabled }}
+{{- if empty .Values.rollout.analysis.prometheus.address }}
+{{- fail "rollout.analysis.prometheus.address is required" }}
+{{- end }}
+{{- if lt (int .Values.rollout.analysis.prometheus.minReadyPods) 1 }}
+{{- fail "rollout.analysis.prometheus.minReadyPods must be at least 1" }}
+{{- end }}
+{{- if lt (int .Values.rollout.analysis.k6.vus) 1 }}
+{{- fail "rollout.analysis.k6.vus must be at least 1" }}
+{{- end }}
+{{- if not (hasPrefix "/" .Values.rollout.analysis.k6.path) }}
+{{- fail "rollout.analysis.k6.path must begin with /" }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- if lt (int .Values.rollout.revisionHistoryLimit) 1 }}
+{{- fail "rollout.revisionHistoryLimit must be at least 1" }}
+{{- end }}
+{{- if lt (int .Values.rollout.progressDeadlineSeconds) 1 }}
+{{- fail "rollout.progressDeadlineSeconds must be at least 1" }}
+{{- end }}
+{{- if lt (int .Values.rollout.minReadySeconds) 0 }}
+{{- fail "rollout.minReadySeconds cannot be negative" }}
+{{- end }}
+{{- if ge (int .Values.rollout.minReadySeconds) (int .Values.rollout.progressDeadlineSeconds) }}
+{{- fail "rollout.minReadySeconds must be less than rollout.progressDeadlineSeconds" }}
+{{- end }}
+{{- end }}

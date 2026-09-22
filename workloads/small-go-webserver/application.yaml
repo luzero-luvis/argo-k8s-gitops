@@ -1,0 +1,59 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: small-go-webserver
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: workloads
+  sources:
+    - repoURL: https://github.com/luzero-luvis/argo-k8s-gitops.git
+      path: charts/microservice
+      targetRevision: main
+      helm:
+        releaseName: small-go-webserver
+        valueFiles:
+          - $values/workloads/small-go-webserver/values.yaml
+    - repoURL: https://github.com/luzero-luvis/argo-k8s-gitops.git
+      targetRevision: main
+      ref: values
+    - repoURL: https://github.com/luzero-luvis/argo-k8s-gitops.git
+      targetRevision: main
+      path: workloads/small-go-webserver/resources
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: small-go-webserver
+  ignoreDifferences:
+    - group: ""
+      kind: Service
+      namespace: small-go-webserver
+      name: small-go-webserver
+      jsonPointers:
+        - /spec/selector/rollouts-pod-template-hash
+    - group: ""
+      kind: Service
+      namespace: small-go-webserver
+      name: small-go-webserver-preview
+      jsonPointers:
+        - /spec/selector/rollouts-pod-template-hash
+    - group: argoproj.io
+      kind: Rollout
+      namespace: small-go-webserver
+      name: small-go-webserver
+      jsonPointers:
+        - /spec/replicas
+    - group: apps
+      kind: Deployment
+      namespace: small-go-webserver
+      name: small-go-webserver
+      jsonPointers:
+        - /spec/replicas
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false
+      - ServerSideApply=true
+      - RespectIgnoreDifferences=true

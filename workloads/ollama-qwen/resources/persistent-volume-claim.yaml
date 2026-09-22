@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ollama-models
+  namespace: ai
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+  labels:
+    app.kubernetes.io/name: ollama
+    app.kubernetes.io/part-of: local-ai
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: longhorn
+  resources:
+    requests:
+      # qwen3:1.7b itself is 1.4GB. The remaining space leaves room for
+      # manifests, temporary downloads, and a future small model.
+      storage: 10Gi

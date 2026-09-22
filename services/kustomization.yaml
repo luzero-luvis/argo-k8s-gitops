@@ -1,0 +1,7 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - keycloak/application.yaml
+  - redis/application.yaml
+  - rabbitmq/application.yaml
+  - n8n/application.yaml

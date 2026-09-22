@@ -1,0 +1,88 @@
+# Values used by docs/argo-rollouts-bluegreen-helm-lab.md.
+# This is an HTTP-only lab configuration, not a production application.
+
+image:
+  name: argoproj/rollouts-demo:blue
+  pullPolicy: Always
+
+replicaCount: 2
+
+rollout:
+  enabled: true
+  minReadySeconds: 5
+  progressDeadlineSeconds: 600
+  progressDeadlineAbort: true
+  revisionHistoryLimit: 3
+  blueGreen:
+    autoPromotionEnabled: true
+    scaleDownDelaySeconds: 30
+  analysis:
+    enabled: true
+    k6:
+      path: /color
+      vus: 5
+      duration: 30s
+      maxFailureRate: 0.05
+      maxP95Ms: 1000
+    prometheus:
+      minReadyPods: 2
+      initialDelay: 45s
+
+containerPort: 8080
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8080
+
+readinessProbe:
+  enabled: true
+  type: httpGet
+  httpGet:
+    path: /
+    port: 8080
+    scheme: HTTP
+  initialDelaySeconds: 2
+  periodSeconds: 2
+  timeoutSeconds: 2
+  successThreshold: 1
+  failureThreshold: 3
+
+livenessProbe:
+  enabled: true
+  type: httpGet
+  httpGet:
+    path: /
+    port: 8080
+    scheme: HTTP
+  initialDelaySeconds: 5
+  periodSeconds: 10
+  timeoutSeconds: 2
+  successThreshold: 1
+  failureThreshold: 3
+
+# argoproj/rollouts-demo is built FROM scratch and has no /bin/sh, so disable
+# the chart's default shell-based preStop hook.
+lifecycle: null
+
+terminationGracePeriodSeconds: 30
+
+resources:
+  requests:
+    cpu: 25m
+    memory: 32Mi
+  limits:
+    memory: 64Mi
+
+httproute:
+  enabled: true
+  # The lab uses the shared HTTP listener. Add a dedicated HTTPS listener and
+  # set this to true before copying the configuration into production.
+  redirectToHttps: false
+  hostnames:
+    - rollouts-helm.example.com
+  gateway:
+    name: agentgateway
+    namespace: agentgateway-system
+    sectionName: http
+

@@ -1,0 +1,17 @@
+global:
+  # node network has no IPv6 egress; cr.agentgateway.dev is dual-stack and
+  # Argo's OCI client doesn't fall back to IPv4 when the AAAA leg fails,
+  # so it misreports every chart pull as "revision not found" - pin the
+  # Cloudflare IPv4 for this host until real IPv6 egress exists.
+  hostAliases:
+    - ip: "104.21.30.208"
+      hostnames:
+        - cr.agentgateway.dev
+
+server:
+  insecure: true
+
+repoServer:
+  livenessProbe:
+    failureThreshold: 5
+    timeoutSeconds: 5

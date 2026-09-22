@@ -1,0 +1,36 @@
+provider:
+  name: aws
+
+policy: upsert-only
+
+env:
+  - name: AWS_ACCESS_KEY_ID
+    valueFrom:
+      secretKeyRef:
+        name: route53-credentials
+        key: aws_access_key_id
+  - name: AWS_SECRET_ACCESS_KEY
+    valueFrom:
+      secretKeyRef:
+        name: route53-credentials
+        key: aws_secret_access_key
+  - name: AWS_DEFAULT_REGION
+    value: us-east-1
+
+domainFilters:
+  - slicearrow.com
+
+txtPrefix: externaldns-
+
+managedRecordTypes:
+  - A
+  - CNAME
+
+interval: 1h
+
+sources:
+  - service
+  - ingress
+  - gateway-httproute
+  - gateway-grpcroute
+  - gateway-tcproute

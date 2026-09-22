@@ -1,0 +1,25 @@
+name: Policy Test
+
+on:
+  pull_request:
+    paths:
+      - policies/**
+      - workloads/**
+      - charts/**
+      - .github/workflows/policy-test.yaml
+
+permissions:
+  contents: read
+
+jobs:
+  kyverno:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Validate policy files
+        run: |
+          docker run --rm \
+            -v "$PWD:/workspace" \
+            -w /workspace \
+            ghcr.io/kyverno/kyverno-cli:v1.15.2 \
+            apply policies --resource workloads

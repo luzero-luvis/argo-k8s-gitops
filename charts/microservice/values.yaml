@@ -1,0 +1,437 @@
+global:
+  # -- Image pull secrets applied to every release using this chart, regardless of namespace.
+  imagePullSecrets: []
+
+# -- Override the chart name portion used to build resource names.
+nameOverride: ""
+# -- Override the full resource name (skips the chart name + release name concatenation).
+fullnameOverride: ""
+# -- Override the namespace resources are deployed into (defaults to the release namespace).
+namespaceOverride: ""
+
+image:
+  # -- Full image reference, e.g. `ghcr.io/org/app:v1.0.0@sha256:...`. Required — the Deployment will fail to roll out if left empty.
+  name: ""
+  # -- Kubelet image pull policy.
+  pullPolicy: IfNotPresent
+  # -- Per-image pull secrets, merged with `global.imagePullSecrets`.
+  pullSecrets: []
+
+# -- Number of pod replicas. Acts as the floor when `autoscaling.enabled` is true.
+replicaCount: 1
+
+rollout:
+  # -- Create an Argo Rollout instead of a Deployment.
+  enabled: false
+  # -- Advanced override for the complete spec.strategy: blueGreen or canary. Empty uses the blue/green options below.
+  strategy: {}
+  # -- Time a new pod must stay ready before Rollouts considers it available.
+  minReadySeconds: 10
+  # -- Maximum seconds for an update to make progress.
+  progressDeadlineSeconds: 600
+  # -- Abort an update that exceeds progressDeadlineSeconds.
+  progressDeadlineAbort: true
+  # -- Number of old ReplicaSets to retain for rollback.
+  revisionHistoryLimit: 3
+  blueGreen:
+    # -- Promote automatically after the preview pods and any pre-promotion analysis pass.
+    autoPromotionEnabled: true
+    # -- Seconds to retain the old ReplicaSet after the Service switch.
+    scaleDownDelaySeconds: 60
+    # -- Optional preview pod count; 0 means use replicaCount.
+    previewReplicaCount: 0
+    # -- Optional AnalysisRun template references and args, created separately.
+    prePromotionAnalysis: {}
+    postPromotionAnalysis: {}
+  analysis:
+    # -- Generate a k6 + Prometheus pre-promotion gate. Requires rollout.enabled and autoPromotionEnabled.
+    enabled: false
+    k6:
+      # -- k6 image used by the AnalysisRun Job.
+      image: grafana/k6:1.0.0
+      # -- Safe, read-only endpoint on the preview Service to load test.
+      path: /
+      # -- Number of virtual users and load test duration.
+      vus: 5
+      duration: 30s
+      # -- Fail if HTTP failures reach this rate or p95 latency reaches this many milliseconds.
+      maxFailureRate: 0.05
+      maxP95Ms: 1000
+    prometheus:
+      # -- In-cluster Prometheus endpoint with kube-state-metrics data.
+      address: http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090
+      # -- Minimum number of ready preview containers seen by Prometheus.
+      minReadyPods: 1
+      # -- Wait for scrape data after the new pods become available.
+      initialDelay: 45s
+
+strategy:
+  # -- Deployment strategy type: `RollingUpdate` or `Recreate`.
+  type: RollingUpdate
+  rollingUpdate:
+    # -- Max number of extra pods created above `replicaCount` during a rollout.
+    maxSurge: 1
+    # -- Max number of pods that can be unavailable during a rollout.
+    maxUnavailable: 0
+
+# -- Override the container entrypoint.
+command: []
+# -- Override the container args.
+args: []
+
+# -- Primary container port the app listens on. Also used as the default target for probes and the Service.
+containerPort: 8080
+# -- Extra container ports beyond the primary one, e.g. `- name: metrics\n  containerPort: 9090`.
+additionalPorts: []
+
+service:
+  # -- Kubernetes Service type: `ClusterIP`, `NodePort`, or `LoadBalancer`.
+  type: ClusterIP
+  # -- Port the Service listens on.
+  port: 80
+  # -- Pod port the Service forwards traffic to.
+  targetPort: 8080
+  # -- Service port protocol.
+  protocol: TCP
+  # -- Extra Service ports beyond the primary one.
+  additionalPorts: []
+  # -- Extra annotations applied to the Service.
+  annotations: {}
+  # -- Extra labels applied to the Service.
+  labels: {}
+  # -- Service session affinity: `None` or `ClientIP`.
+  sessionAffinity: None
+  # -- CIDRs allowed to reach a `LoadBalancer` type Service.
+  loadBalancerSourceRanges: []
+
+# -- Plain environment variables injected into the container.
+env: []
+# -- `envFrom` sources (ConfigMaps/Secrets) beyond the ones this chart manages itself.
+envFrom: []
+
+envFromSecret:
+  # -- Inject all keys from an existing Secret as environment variables.
+  enabled: false
+  # -- Name of the existing Secret to source env vars from. Required when `envFromSecret.enabled` is true.
+  secretName: ""
+
+configMap:
+  # -- Create a ConfigMap and mount it via `envFrom`.
+  enabled: false
+  # -- Key/value data for the generated ConfigMap.
+  data: {}
+
+readinessProbe:
+  # -- Enable the readiness probe.
+  enabled: true
+  # -- Probe mechanism: `httpGet`, `exec`, `tcpSocket`, or `grpc`.
+  type: httpGet
+  httpGet:
+    # -- HTTP path checked by the probe.
+    path: /healthz
+    # -- Port checked by the probe.
+    port: 8080
+    # -- HTTP scheme: `HTTP` or `HTTPS`.
+    scheme: HTTP
+    # -- Extra HTTP headers sent with the probe request.
+    httpHeaders: []
+  exec:
+    # -- Command run inside the container for an `exec` probe.
+    command: []
+  tcpSocket:
+    # -- Port checked by a `tcpSocket` probe.
+    port: 8080
+  grpc:
+    # -- Port checked by a `grpc` probe.
+    port: 8080
+    # -- Optional gRPC health service name.
+    service: ""
+  # -- Seconds to wait after container start before the first probe.
+  initialDelaySeconds: 15
+  # -- Seconds between probe checks.
+  periodSeconds: 30
+  # -- Seconds before a probe attempt times out.
+  timeoutSeconds: 15
+  # -- Consecutive successes needed to mark the probe as passing.
+  successThreshold: 1
+  # -- Consecutive failures needed to mark the pod as not-ready.
+  failureThreshold: 3
+
+livenessProbe:
+  # -- Enable the liveness probe.
+  enabled: true
+  # -- Probe mechanism: `httpGet`, `exec`, `tcpSocket`, or `grpc`.
+  type: httpGet
+  httpGet:
+    # -- HTTP path checked by the probe.
+    path: /healthz
+    # -- Port checked by the probe.
+    port: 8080
+    # -- HTTP scheme: `HTTP` or `HTTPS`.
+    scheme: HTTP
+    # -- Extra HTTP headers sent with the probe request.
+    httpHeaders: []
+  exec:
+    # -- Command run inside the container for an `exec` probe.
+    command: []
+  tcpSocket:
+    # -- Port checked by a `tcpSocket` probe.
+    port: 8080
+  grpc:
+    # -- Port checked by a `grpc` probe.
+    port: 8080
+    # -- Optional gRPC health service name.
+    service: ""
+  # -- Seconds to wait after container start before the first probe.
+  initialDelaySeconds: 60
+  # -- Seconds between probe checks.
+  periodSeconds: 30
+  # -- Seconds before a probe attempt times out.
+  timeoutSeconds: 15
+  # -- Consecutive successes needed to mark the probe as passing.
+  successThreshold: 1
+  # -- Consecutive failures before the pod is restarted.
+  failureThreshold: 6
+
+startupProbe:
+  # -- Enable the startup probe. Useful for slow-starting apps so liveness/readiness don't kill the pod prematurely.
+  enabled: false
+  # -- Probe mechanism: `httpGet`, `exec`, `tcpSocket`, or `grpc`.
+  type: httpGet
+  httpGet:
+    # -- HTTP path checked by the probe.
+    path: /healthz
+    # -- Port checked by the probe.
+    port: 8080
+    # -- HTTP scheme: `HTTP` or `HTTPS`.
+    scheme: HTTP
+    # -- Extra HTTP headers sent with the probe request.
+    httpHeaders: []
+  exec:
+    # -- Command run inside the container for an `exec` probe.
+    command: []
+  tcpSocket:
+    # -- Port checked by a `tcpSocket` probe.
+    port: 8080
+  grpc:
+    # -- Port checked by a `grpc` probe.
+    port: 8080
+    # -- Optional gRPC health service name.
+    service: ""
+  # -- Seconds to wait after container start before the first probe.
+  initialDelaySeconds: 0
+  # -- Seconds between probe checks.
+  periodSeconds: 10
+  # -- Seconds before a probe attempt times out.
+  timeoutSeconds: 15
+  # -- Consecutive successes needed to mark the probe as passing.
+  successThreshold: 1
+  # -- Consecutive failures allowed before the pod is killed for never starting up.
+  failureThreshold: 30
+
+resources:
+  requests:
+    # -- Guaranteed CPU. Used by the scheduler and as the baseline for HPA CPU utilization. Intentionally has no matching limit to avoid CPU throttling — see CPU limit note below.
+    cpu: 100m
+    # -- Guaranteed memory.
+    memory: 128Mi
+  limits:
+    # -- Hard memory ceiling — exceeding it gets the pod OOMKilled. No `cpu` limit is set by default; CPU limits cause throttling even when the node has spare capacity, so most production setups only request CPU and never cap it.
+    memory: 256Mi
+
+podSecurityContext:
+  # -- Require the pod to run as a non-root user.
+  runAsNonRoot: true
+  # -- UID the pod runs as.
+  runAsUser: 1000
+  # -- GID the pod runs as.
+  runAsGroup: 1000
+  # -- GID applied to mounted volumes.
+  fsGroup: 1000
+  seccompProfile:
+    # -- Seccomp profile type.
+    type: RuntimeDefault
+
+securityContext:
+  # -- Require the container to run as a non-root user.
+  runAsNonRoot: true
+  # -- UID the container runs as.
+  runAsUser: 1000
+  # -- GID the container runs as.
+  runAsGroup: 1000
+  # -- Mount the container's root filesystem as read-only.
+  readOnlyRootFilesystem: true
+  # -- Disallow privilege escalation inside the container.
+  allowPrivilegeEscalation: false
+  capabilities:
+    # -- Linux capabilities to drop from the container.
+    drop:
+      - ALL
+  seccompProfile:
+    # -- Seccomp profile type.
+    type: RuntimeDefault
+
+serviceAccount:
+  # -- Create a dedicated ServiceAccount for the pod. Should be `true` whenever `rbac.enabled` is true, otherwise the generated RoleBinding points at a ServiceAccount that doesn't exist.
+  create: false
+  # -- Annotations applied to the ServiceAccount (e.g. for IRSA/Workload Identity).
+  annotations: {}
+  # -- Name of the ServiceAccount. Defaults to the chart's fullname if empty.
+  name: ""
+  # -- Mount the ServiceAccount token into the pod.
+  automountServiceAccountToken: false
+
+rbac:
+  # -- Create RBAC resources (Role/RoleBinding and/or ClusterRole/ClusterRoleBinding) for the pod's ServiceAccount.
+  enabled: false
+  # -- Namespace-scoped rules — creates a Role + RoleBinding.
+  rules: []
+    # - apiGroups: [""]
+    #   resources: ["configmaps", "secrets"]
+    #   verbs: ["get", "list", "watch"]
+  # -- Cluster-scoped rules — creates a ClusterRole + ClusterRoleBinding.
+  clusterRules: []
+    # - apiGroups: [""]
+    #   resources: ["nodes"]
+    #   verbs: ["get", "list", "watch"]
+
+# -- Seconds the pod is given to shut down gracefully before being force-killed.
+terminationGracePeriodSeconds: 30
+# -- Pod DNS policy.
+dnsPolicy: ClusterFirst
+# -- Custom DNS config (nameservers, search domains, options).
+dnsConfig: {}
+# -- Extra `/etc/hosts` entries for the pod.
+hostAliases: []
+# -- Use the host's network namespace.
+hostNetwork: false
+# -- Share the process namespace between containers in the pod.
+shareProcessNamespace: false
+
+lifecycle:
+  preStop:
+    exec:
+      # -- Command run before the container receives SIGTERM. Default sleeps 10s to let in-flight requests drain and the endpoint be removed from Service/Istio routing.
+      command:
+        - /bin/sh
+        - -c
+        - sleep 10
+
+# -- Node selector constraints for pod scheduling.
+nodeSelector: {}
+# -- Tolerations for scheduling onto tainted nodes.
+tolerations: []
+# -- Affinity/anti-affinity rules.
+affinity: {}
+
+topologySpreadConstraints:
+  # -- Spread pod replicas across topology domains (e.g. nodes) to avoid co-locating all of them on one host.
+  enabled: false
+  constraints:
+    - # -- Max difference in pod count allowed between topology domains.
+      maxSkew: 1
+      # -- Node label used to define topology domains, e.g. `kubernetes.io/hostname` or `topology.kubernetes.io/zone`.
+      topologyKey: kubernetes.io/hostname
+      # -- What the scheduler does when the constraint can't be satisfied: `DoNotSchedule` or `ScheduleAnyway`.
+      whenUnsatisfiable: DoNotSchedule
+
+# -- PriorityClass name applied to the pod.
+priorityClassName: ""
+# -- RuntimeClass name applied to the pod (e.g. for gVisor/Kata sandboxes).
+runtimeClassName: ""
+
+# -- Extra volumes to attach to the pod.
+volumes: []
+# -- Extra volume mounts on the main container.
+volumeMounts: []
+
+tmpVolume:
+  # -- Mount an emptyDir at `/tmp`. Needed whenever `securityContext.readOnlyRootFilesystem` is true and the app needs to write temp files.
+  enabled: true
+  # -- Size limit of the `/tmp` emptyDir.
+  sizeLimit: 1Gi
+
+deploymentAnnotations:
+  # -- Triggers a rolling restart via Stakater Reloader whenever a referenced ConfigMap/Secret changes.
+  reloader.stakater.com/auto: "true"
+
+# -- Extra labels applied to pods only.
+podLabels: {}
+# -- Extra annotations applied to pods only.
+podAnnotations: {}
+# -- Extra labels applied to every resource this chart creates.
+commonLabels: {}
+
+autoscaling:
+  # -- Create a HorizontalPodAutoscaler instead of a fixed `replicaCount`.
+  enabled: false
+  # -- Floor replica count the HPA will never scale below.
+  minReplicas: 1
+  # -- Ceiling replica count the HPA will never scale above.
+  maxReplicas: 5
+  # -- Target average CPU utilization (% of the `resources.requests.cpu` value) before scaling out.
+  targetCPUUtilizationPercentage: 80
+  # -- Target average memory utilization (% of `resources.requests.memory`). Leave empty to disable memory-based scaling.
+  targetMemoryUtilizationPercentage: ""
+  behavior:
+    scaleDown:
+      # -- Seconds the HPA waits with low utilization before it's allowed to scale down (prevents flapping).
+      stabilizationWindowSeconds: 300
+      policies:
+        - # -- Policy unit: `Pods` (absolute count) or `Percent` (percentage of current replicas).
+          type: Pods
+          # -- Max pods removed per scale-down step.
+          value: 1
+          # -- Time window each scale-down step applies to.
+          periodSeconds: 60
+    scaleUp:
+      # -- Seconds the HPA waits before scaling up again (0 = react immediately).
+      stabilizationWindowSeconds: 0
+      policies:
+        - # -- Policy unit: `Pods` (absolute count) or `Percent` (percentage of current replicas).
+          type: Pods
+          # -- Max pods added per scale-up step.
+          value: 2
+          # -- Time window each scale-up step applies to.
+          periodSeconds: 30
+
+networkPolicy:
+  # -- Create a NetworkPolicy restricting traffic to/from the pod. Note the default egress rule below is wide open — tighten it before relying on this for real isolation.
+  enabled: false
+  # -- Ingress rules. Defaults to allowing traffic from the Istio sidecar namespace and same-namespace pods.
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: istio-system
+        - podSelector: {}
+  # -- Egress rules. Defaults to allowing all egress — restrict this to DNS + required upstreams for actual network isolation.
+  egress:
+    - {}
+
+podDisruptionBudget:
+  # -- Create a PodDisruptionBudget to keep pods available during voluntary disruptions (node drains, cluster upgrades).
+  enabled: false
+  # -- Minimum pods that must stay available. Set only one of `minAvailable`/`maxUnavailable`.
+  minAvailable: 1
+  # maxUnavailable: 1
+
+httproute:
+  # -- Create Gateway API HTTPRoute(s) to expose the Service through the shared `platform-gateway`.
+  enabled: false
+  # -- When true, creates both an HTTP→HTTPS redirect route and a separate HTTPS route. When false, creates a single route bound to `gateway.sectionName` only.
+  redirectToHttps: true
+  # -- Hostnames the route(s) match on, e.g. `my-service.example.com`.
+  hostnames: []
+    # - my-service.example.com
+  gateway:
+    # -- Name of the shared Gateway resource to attach to.
+    name: platform-gateway
+    # -- Namespace the Gateway lives in.
+    namespace: istio-system
+    # -- HTTP listener section name on the Gateway (used directly when `redirectToHttps` is false, or for the redirect route when true).
+    sectionName: slicearrow-http
+    # -- HTTPS listener section name on the Gateway (only used when `redirectToHttps` is true).
+    sectionNameHttps: slicearrow-https
+  # -- Request timeout applied to the HTTPS route, e.g. `30s`. `0s` means no timeout.
+  requestTimeout: "0s"

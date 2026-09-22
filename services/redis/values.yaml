@@ -1,0 +1,102 @@
+# Redis for the shared services.
+architecture: replication
+
+auth:
+  enabled: true
+  existingSecret: "redis-auth"
+  # The external-secrets Password generator (resources/auth-secret.yaml)
+  # writes its output under the fixed key "password".
+  existingSecretPasswordKey: "password"
+  # auth.acl.enabled is intentionally OFF. That flag makes the chart mount
+  # a generated ACL Secret via subPath *inside* the ConfigMap directory at
+  # /opt/bitnami/redis/mounted-etc -- ConfigMap volumes are always mounted
+  # read-only by kubelet, so the subPath mount point can never be created and
+  # every pod crash-loops with "OCI runtime create failed ... not a
+  # directory". Unfixed upstream: https://github.com/bitnami/charts/issues/36557
+  # (bitnami/redis is unmaintained). Instead, resources/auth-secret.yaml
+  # renders a complete "users.acl" (default + app users) into the
+  # redis-auth Secret, and it's mounted below via extraVolumes at a
+  # standalone path that isn't nested under any other mount.
+  acl:
+    enabled: false
+
+# The chart's default commonConfiguration also adds `aclfile` when
+# auth.acl.enabled is true; since that's off here, this repeats the default
+# and adds our own aclfile path (see the auth.acl comment above).
+commonConfiguration: |-
+  # Enable ReJSON y Redisearch
+  loadmodule /opt/bitnami/redis/lib/redis/modules/redisearch.so
+  loadmodule /opt/bitnami/redis/lib/redis/modules/rejson.so
+  # Enable AOF https://redis.io/topics/persistence#append-only-file
+  appendonly yes
+  # Disable RDB persistence, AOF persistence already enabled.
+  save ""
+  # The file with Redis ACL rules (default + app users), mounted
+  # directly via extraVolumes below -- see the auth.acl comment above.
+  aclfile /opt/bitnami/redis/mounted-acl/users.acl
+
+master:
+  extraVolumes:
+    - name: acl
+      secret:
+        secretName: redis-auth
+        items:
+          - key: users.acl
+            path: users.acl
+  extraVolumeMounts:
+    - name: acl
+      mountPath: /opt/bitnami/redis/mounted-acl
+      readOnly: true
+  persistence:
+    enabled: true
+    storageClass: "longhorn"
+    size: 2Gi
+  resources:
+    requests: { cpu: "250m", memory: "256Mi" }
+    limits: { cpu: "1", memory: "1Gi" }
+  # Pin the primary to node5. It's tainted for GitHub Actions runners
+  # (see arc-runner-set/values.yaml), so an explicit toleration is required.
+  nodeSelector:
+    kubernetes.io/hostname: node5
+  tolerations:
+    - key: dedicated
+      operator: Equal
+      value: github-actions-runner
+      effect: NoSchedule
+
+replica:
+  replicaCount: 2
+  extraVolumes:
+    - name: acl
+      secret:
+        secretName: redis-auth
+        items:
+          - key: users.acl
+            path: users.acl
+  extraVolumeMounts:
+    - name: acl
+      mountPath: /opt/bitnami/redis/mounted-acl
+      readOnly: true
+  persistence:
+    enabled: true
+    storageClass: "longhorn"
+    size: 2Gi
+  resources:
+    requests: { cpu: "250m", memory: "256Mi" }
+    limits: { cpu: "1", memory: "1Gi" }
+  # Restrict replicas to node1/node2, and require them onto different nodes
+  # from each other. With exactly 2 replicas and 2 allowed nodes, this
+  # guarantees one replica lands on node1 and the other on node2.
+  nodeAffinityPreset:
+    type: hard
+    key: kubernetes.io/hostname
+    values:
+      - node1
+      - node2
+  podAntiAffinityPreset: hard
+
+metrics:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    interval: 30s

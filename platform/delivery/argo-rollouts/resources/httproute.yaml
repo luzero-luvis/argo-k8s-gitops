@@ -1,0 +1,59 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: argo-rollouts-dashboard
+  namespace: argo-rollouts
+spec:
+  parentRefs:
+    - name: agentgateway
+      namespace: agentgateway-system
+      sectionName: https-argo-rollouts
+  hostnames:
+    - argo-rollouts.example.com
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: argo-rollouts-dashboard
+          port: 3100
+---
+# This policy is attached only to the HTTPS dashboard route. HTTP continues to
+# redirect to HTTPS before credentials are requested.
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: argo-rollouts-dashboard-auth
+  namespace: argo-rollouts
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: argo-rollouts-dashboard
+  traffic:
+    basicAuthentication:
+      mode: Strict
+      realm: Argo Rollouts
+      secretRef:
+        name: argo-rollouts-dashboard-basic-auth
+---
+# Keep port 80 available only to redirect users to the TLS listener.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: argo-rollouts-dashboard-http
+  namespace: argo-rollouts
+spec:
+  parentRefs:
+    - name: agentgateway
+      namespace: agentgateway-system
+      sectionName: http
+  hostnames:
+    - argo-rollouts.example.com
+  rules:
+    - filters:
+        - type: RequestRedirect
+          requestRedirect:
+            scheme: https
+            statusCode: 301

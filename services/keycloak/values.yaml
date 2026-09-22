@@ -1,0 +1,64 @@
+replicas: 2
+extraEnv: |
+  - name: KC_HOSTNAME
+    value: https://keycloak-heb.slicearrow.com
+  - name: KC_BOOTSTRAP_ADMIN_USERNAME
+    value: admin
+  - name: KC_BOOTSTRAP_ADMIN_PASSWORD
+    valueFrom:
+      secretKeyRef:
+        name: keycloak-admin
+        key: password
+  - name: KC_TRACING_ENDPOINT
+    value: http://otel-collector-gateway.monitoring.svc.cluster.local:4317
+  - name: KC_TRACING_PROTOCOL
+    value: grpc
+  - name: KC_TRACING_SAMPLER_TYPE
+    value: parentbased_traceidratio
+  - name: KC_TRACING_SAMPLER_RATIO
+    value: "1.0"
+  - name: KC_TRACING_JDBC_ENABLED
+    value: "true"
+  - name: KC_TRACING_INFINISPAN_ENABLED
+    value: "true"
+  - name: KC_TELEMETRY_SERVICE_NAME
+    value: keycloak
+  - name: KC_TELEMETRY_RESOURCE_ATTRIBUTES
+    value: deployment.environment.name=dev
+  - name: KC_LOG_CONSOLE_OUTPUT
+    value: json
+database:
+  vendor: postgres
+  hostname: keycloak-db-rw
+  port: 5432
+  database: keycloak
+  username: keycloak
+  existingSecret: keycloak-db-app
+  existingSecretKey: password
+dbchecker:
+  enabled: true
+http:
+  relativePath: /
+proxy:
+  enabled: true
+  mode: xforwarded
+  http:
+    enabled: true
+service:
+  type: ClusterIP
+  httpPort: 3846
+metrics:
+  enabled: true
+health:
+  enabled: true
+serviceMonitor:
+  enabled: true
+podDisruptionBudget:
+  maxUnavailable: 1
+resources:
+  requests:
+    cpu: 250m
+    memory: 768Mi
+  limits:
+    cpu: "1"
+    memory: 1536Mi

@@ -1,0 +1,33 @@
+name: Helm Docs
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - charts/values.yaml
+      - charts/Chart.yaml
+      - charts/templates/**
+
+permissions:
+  contents: write
+
+jobs:
+  helm-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run helm-docs
+        uses: losisin/helm-docs-github-action@v1
+        with:
+          chart-search-root: charts
+
+      - name: Commit updated README
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "docs: update helm chart README"
+          file_pattern: charts/README.md

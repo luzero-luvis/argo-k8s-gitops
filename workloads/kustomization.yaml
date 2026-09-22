@@ -1,0 +1,6 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - small-go-webserver/application.yaml
+  - rollouts-demo/application.yaml
+  - ollama-qwen/application.yaml
